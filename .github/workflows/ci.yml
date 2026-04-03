@@ -43,4 +43,12 @@ jobs:
             echo "Run 'cd infra && npx cdk synth' with AWS credentials, then commit the updated cdk.context.json."
             exit 0
           fi
+          # fromLookup requires explicit stack env; account is embedded in cached context keys
+          export CDK_DEFAULT_ACCOUNT="$(
+            grep -oE 'hosted-zone:account=[0-9]+' cdk.context.json | head -1 | cut -d= -f2
+          )"
+          if [ -z "${CDK_DEFAULT_ACCOUNT}" ]; then
+            echo "::error::Could not parse AWS account id from cdk.context.json"
+            exit 1
+          fi
           npx cdk synth
