@@ -89,7 +89,7 @@ The marketing site for those domains is built from this repository (`site/`) and
 |------|---------|
 | `site/` | Static HTML/CSS served at the apex and `www` hostnames |
 | `infra/` | TypeScript CDK app; stack name **`SignedDataOrgHomeStack`** |
-| `infra/scripts/` | **Automate OIDC + GitHub env:** `automate-deploy-setup.sh` |
+| `infra/scripts/` | **Automate OIDC + GitHub env** (see also repo-root `automate-deploy-setup.sh`) |
 | `.github/workflows/` | `CI` (TypeScript build + optional `cdk synth`) and `Deploy site` |
 
 S3 bucket name pattern: `signeddata-org-www-<account>-us-east-1` (avoids clashing with the `signeddata-site-*` bucket used by [`signed-data/cds`](https://github.com/signed-data/cds)).
@@ -112,8 +112,12 @@ After the first successful `cdk synth`, commit the updated `infra/cdk.context.js
 3. **Automate GitHub OIDC + `production` variables** (AWS admin credentials + [`gh`](https://cli.github.com) logged in):
 
 ```bash
+./automate-deploy-setup.sh
+# same as:
 ./infra/scripts/automate-deploy-setup.sh
 ```
+
+Use a path **relative to your clone** (starts with `./`). A path like `/infra/scripts/...` points at the machine root, not this repo.
 
 Manual steps and trust-policy details: [infra/docs/github-oidc.md](infra/docs/github-oidc.md).
 

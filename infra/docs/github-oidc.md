@@ -7,8 +7,10 @@ Deploy uses [OpenID Connect](https://docs.github.com/en/actions/deployment/secur
 From a clone of this repository, with **AWS CLI** credentials (admin or IAM-full) and **GitHub CLI** (`gh`) authenticated:
 
 ```bash
-./infra/scripts/automate-deploy-setup.sh
+./automate-deploy-setup.sh
 ```
+
+(from the repository root; equivalent to `./infra/scripts/automate-deploy-setup.sh`)
 
 This runs:
 

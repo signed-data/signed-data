@@ -42,7 +42,7 @@ jobs:
           set -euo pipefail
           if [ -z "${ROLE_ARN}" ] && [ -z "${ACCOUNT_ID}" ]; then
             echo "::error::Set GitHub Environment 'production' variables AWS_ACCOUNT_ID (preferred) or AWS_DEPLOY_ROLE_ARN."
-            echo "Automate: run ./infra/scripts/automate-deploy-setup.sh (aws + gh) — see README and infra/docs/github-oidc.md"
+            echo "Automate: run ./automate-deploy-setup.sh from the repo clone (aws + gh) — see README and infra/docs/github-oidc.md"
             exit 1
           fi
 
