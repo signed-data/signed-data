@@ -1,0 +1,88 @@
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - "infra/**"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-signeddata-org-site
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: us-east-1
+  STACK_NAME: SignedDataOrgHomeStack
+
+jobs:
+  deploy:
+    name: CDK deploy + S3 sync + invalidation
+    runs-on: ubuntu-latest
+    environment: production
+
+    defaults:
+      run:
+        working-directory: infra
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Install CDK dependencies
+        run: npm ci
+
+      - name: CDK deploy
+        run: npx cdk deploy ${{ env.STACK_NAME }} --require-approval never
+
+      - name: Resolve bucket and distribution
+        id: resolve
+        working-directory: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          BUCKET="${{ vars.SITE_BUCKET }}"
+          DIST="${{ vars.CF_DISTRIBUTION_ID }}"
+          if [ -z "$BUCKET" ] || [ -z "$DIST" ]; then
+            echo "Resolving outputs from CloudFormation stack ${{ env.STACK_NAME }}..."
+            BUCKET=$(aws cloudformation describe-stacks \
+              --stack-name "${{ env.STACK_NAME }}" \
+              --query "Stacks[0].Outputs[?OutputKey=='SiteBucketName'].OutputValue" \
+              --output text)
+            DIST=$(aws cloudformation describe-stacks \
+              --stack-name "${{ env.STACK_NAME }}" \
+              --query "Stacks[0].Outputs[?OutputKey=='DistributionId'].OutputValue" \
+              --output text)
+          fi
+          echo "bucket=$BUCKET" >> "$GITHUB_OUTPUT"
+          echo "distribution=$DIST" >> "$GITHUB_OUTPUT"
+
+      - name: Sync site to S3
+        working-directory: ${{ github.workspace }}
+        run: |
+          aws s3 sync site/ "s3://${{ steps.resolve.outputs.bucket }}/" \
+            --delete \
+            --cache-control "public, max-age=3600"
+
+      - name: Invalidate CloudFront
+        working-directory: ${{ github.workspace }}
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ steps.resolve.outputs.distribution }}" \
+            --paths "/*"

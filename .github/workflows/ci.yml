@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: infra
+
+jobs:
+  build-and-synth:
+    name: TypeScript + CDK synth
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile TypeScript
+        run: npm run build
+
+      - name: CDK synth
+        env:
+          CDK_DEFAULT_REGION: us-east-1
+        run: |
+          set -euo pipefail
+          if ! grep -q "hosted-zone:" cdk.context.json 2>/dev/null; then
+            echo "::warning::infra/cdk.context.json has no Route53 lookup entries yet."
+            echo "Run 'cd infra && npx cdk synth' with AWS credentials, then commit the updated cdk.context.json."
+            exit 0
+          fi
+          npx cdk synth

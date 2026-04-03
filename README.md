@@ -81,6 +81,45 @@ We only ingest from APIs with structured, reliable output. No scraping. No unver
 
 [signed-data.org](https://signed-data.org) · [signeddata.org](https://signeddata.org)
 
+The marketing site for those domains is built from this repository (`site/`) and deployed with **AWS CDK** (S3 private bucket, CloudFront with OAC, ACM, Route53) plus **GitHub Actions** (OIDC).
+
+### Repository layout
+
+| Path | Purpose |
+|------|---------|
+| `site/` | Static HTML/CSS served at the apex and `www` hostnames |
+| `infra/` | TypeScript CDK app; stack name **`SignedDataOrgHomeStack`** |
+| `.github/workflows/` | `CI` (TypeScript build + optional `cdk synth`) and `Deploy site` |
+
+S3 bucket name pattern: `signeddata-org-www-<account>-us-east-1` (avoids clashing with the `signeddata-site-*` bucket used by [`signed-data/cds`](https://github.com/signed-data/cds)).
+
+### Local development
+
+```bash
+cd infra
+npm ci
+npm run build
+npx cdk synth   # requires AWS credentials + Route53 hosted zones for signed-data.org / signeddata.org
+```
+
+After the first successful `cdk synth`, commit the updated `infra/cdk.context.json` so CI can run `cdk synth` without calling AWS (hosted zone lookups are cached there).
+
+### First-time AWS setup
+
+1. Route 53 hosted zones must exist for **signed-data.org** and **signeddata.org** (with DNS delegations as you already use for the org).
+2. Bootstrap CDK in **us-east-1**: `npx cdk bootstrap aws://ACCOUNT_ID/us-east-1` (from `infra/` with `CDK_DEFAULT_ACCOUNT` / `CDK_DEFAULT_REGION` set).
+3. Create an IAM role for GitHub OIDC and attach a policy that allows CDK deploy plus S3 sync and CloudFront invalidation. Step-by-step trust policy and notes: [infra/docs/github-oidc.md](infra/docs/github-oidc.md).
+
+### GitHub Actions — `production` environment variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AWS_DEPLOY_ROLE_ARN` | Yes | IAM role ARN assumed via OIDC (`sts:AssumeRoleWithWebIdentity`) |
+| `SITE_BUCKET` | No | S3 bucket name; if empty, read from stack output `SiteBucketName` |
+| `CF_DISTRIBUTION_ID` | No | CloudFront distribution ID; if empty, read from stack output `DistributionId` |
+
+Workflow **Deploy site** runs on pushes to `main` that touch `site/`, `infra/`, or the workflow file, and on `workflow_dispatch`. It runs `cdk deploy`, `aws s3 sync site/`, and `aws cloudfront create-invalidation`.
+
 ---
 
 ## License
