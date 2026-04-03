@@ -89,6 +89,7 @@ The marketing site for those domains is built from this repository (`site/`) and
 |------|---------|
 | `site/` | Static HTML/CSS served at the apex and `www` hostnames |
 | `infra/` | TypeScript CDK app; stack name **`SignedDataOrgHomeStack`** |
+| `infra/scripts/` | **Automate OIDC + GitHub env:** `automate-deploy-setup.sh` |
 | `.github/workflows/` | `CI` (TypeScript build + optional `cdk synth`) and `Deploy site` |
 
 S3 bucket name pattern: `signeddata-org-www-<account>-us-east-1` (avoids clashing with the `signeddata-site-*` bucket used by [`signed-data/cds`](https://github.com/signed-data/cds)).
@@ -108,13 +109,20 @@ After the first successful `cdk synth`, commit the updated `infra/cdk.context.js
 
 1. Route 53 hosted zones must exist for **signed-data.org** and **signeddata.org** (with DNS delegations as you already use for the org).
 2. Bootstrap CDK in **us-east-1**: `npx cdk bootstrap aws://ACCOUNT_ID/us-east-1` (from `infra/` with `CDK_DEFAULT_ACCOUNT` / `CDK_DEFAULT_REGION` set).
-3. Create an IAM role for GitHub OIDC and attach a policy that allows CDK deploy plus S3 sync and CloudFront invalidation. Step-by-step trust policy and notes: [infra/docs/github-oidc.md](infra/docs/github-oidc.md).
+3. **Automate GitHub OIDC + `production` variables** (AWS admin credentials + [`gh`](https://cli.github.com) logged in):
+
+```bash
+./infra/scripts/automate-deploy-setup.sh
+```
+
+Manual steps and trust-policy details: [infra/docs/github-oidc.md](infra/docs/github-oidc.md).
 
 ### GitHub Actions — `production` environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `AWS_DEPLOY_ROLE_ARN` | Yes | IAM role ARN assumed via OIDC (`sts:AssumeRoleWithWebIdentity`) |
+| `AWS_ACCOUNT_ID` | One of two | 12-digit account; workflow assumes `arn:aws:iam::<id>:role/github-signeddata-org-home` |
+| `AWS_DEPLOY_ROLE_ARN` | One of two | Full role ARN (overrides default role name when set) |
 | `SITE_BUCKET` | No | S3 bucket name; if empty, read from stack output `SiteBucketName` |
 | `CF_DISTRIBUTION_ID` | No | CloudFront distribution ID; if empty, read from stack output `DistributionId` |
 

@@ -34,6 +34,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Require production deploy variables
+        env:
+          ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          ACCOUNT_ID: ${{ vars.AWS_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ROLE_ARN}" ] && [ -z "${ACCOUNT_ID}" ]; then
+            echo "::error::Set GitHub Environment 'production' variables AWS_ACCOUNT_ID (preferred) or AWS_DEPLOY_ROLE_ARN."
+            echo "Automate: run ./infra/scripts/automate-deploy-setup.sh (aws + gh) — see README and infra/docs/github-oidc.md"
+            exit 1
+          fi
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -43,7 +55,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN || format('arn:aws:iam::{0}:role/github-signeddata-org-home', vars.AWS_ACCOUNT_ID) }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Install CDK dependencies

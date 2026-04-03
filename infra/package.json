@@ -1,6 +1,6 @@
 {
   "name": "signeddata-org-infra",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "SignedData.org marketing site — AWS CDK (S3 + CloudFront)",
   "type": "module",

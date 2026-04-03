@@ -2,6 +2,29 @@
 
 Deploy uses [OpenID Connect](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services) so GitHub can assume an IAM role without long-lived access keys.
 
+## Automated setup (recommended)
+
+From a clone of this repository, with **AWS CLI** credentials (admin or IAM-full) and **GitHub CLI** (`gh`) authenticated:
+
+```bash
+./infra/scripts/automate-deploy-setup.sh
+```
+
+This runs:
+
+1. **`provision-github-oidc-role.sh`** — creates the GitHub OIDC provider (if missing), IAM role **`github-signeddata-org-home`**, trust for `repo:signed-data/signed-data:*`, and attaches `AdministratorAccess` (tighten later if needed).
+2. **`sync-github-environment.sh`** — ensures Environment **`production`** exists and sets **`AWS_ACCOUNT_ID`** and **`AWS_DEPLOY_ROLE_ARN`**.
+
+Options:
+
+- `DRY_RUN=1 ./infra/scripts/provision-github-oidc-role.sh` — print AWS steps only (OIDC create still skipped safely when dry).
+- `SKIP_GH_SYNC=1 ./infra/scripts/automate-deploy-setup.sh` — AWS only, no `gh`.
+- Override role name: `GITHUB_OIDC_ROLE_NAME=my-role ./infra/scripts/provision-github-oidc-role.sh` (then set **`AWS_DEPLOY_ROLE_ARN`** manually in GitHub or adjust the workflow default role name).
+
+The **Deploy site** workflow resolves the role as: `AWS_DEPLOY_ROLE_ARN` if set, otherwise `arn:aws:iam::<AWS_ACCOUNT_ID>:role/github-signeddata-org-home`.
+
+---
+
 ## 1. IdP in AWS (once per account)
 
 If `token.actions.githubusercontent.com` is not registered yet:
@@ -65,8 +88,10 @@ Minimum areas the role must cover:
 
 ## 4. GitHub configuration
 
-1. Create environment **production** (Settings → Environments).
-2. Add variable **`AWS_DEPLOY_ROLE_ARN`**: `arn:aws:iam::ACCOUNT_ID:role/github-signed-data-org-deploy`.
+1. Create environment **production** (Settings → Environments), or use **`sync-github-environment.sh`**.
+2. Set either:
+   - **`AWS_ACCOUNT_ID`** (12-digit account) — workflow assumes role `github-signeddata-org-home`; or
+   - **`AWS_DEPLOY_ROLE_ARN`** — full ARN (overrides the default role name).
 3. Optional: **`SITE_BUCKET`** and **`CF_DISTRIBUTION_ID`** — if omitted, the workflow reads them from CloudFormation stack outputs after `cdk deploy`.
 
 ## 5. Bootstrap CDK (once per account/region)
