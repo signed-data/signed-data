@@ -121,7 +121,11 @@ Use a path **relative to your clone** (starts with `./`). A path like `/infra/sc
 
 Manual steps and trust-policy details: [infra/docs/github-oidc.md](infra/docs/github-oidc.md).
 
-### GitHub Actions — `production` environment variables
+### GitHub Actions — deploy identity
+
+The **Deploy site** job uses the `production` environment. Set **`AWS_ACCOUNT_ID`** or **`AWS_DEPLOY_ROLE_ARN`** on that environment **or** as **repository** Actions variables (same names); repository values apply when the environment does not define them.
+
+Create the IAM role with `./infra/scripts/provision-github-oidc-role.sh` (or `./automate-deploy-setup.sh`) if `sts:AssumeRoleWithWebIdentity` fails in Actions.
 
 | Variable | Required | Description |
 |----------|----------|-------------|
