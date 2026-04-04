@@ -132,6 +132,12 @@ Manual steps and trust-policy details: [infra/docs/github-oidc.md](infra/docs/gi
 
 Workflow **Deploy site** runs on pushes to `main` that touch `site/`, `infra/`, or the workflow file, and on `workflow_dispatch`. It runs `cdk deploy`, `aws s3 sync site/`, and `aws cloudfront create-invalidation`.
 
+### Troubleshooting (Route 53)
+
+**Stack fails on `AWS::Route53::RecordSet` (apex or `www`)** with a message like *RRSet of type A … is not permitted because a conflicting RRSet of type CNAME … already exists*: Route 53 does not allow a **CNAME** and an **alias A** on the same name. Remove the conflicting record (for example a `www` CNAME pointing at the apex) in the relevant hosted zone, then delete the failed stack if it is in `ROLLBACK_COMPLETE`, clean up any **retained** S3 bucket with the same name as in the template if the create failed mid-way, and run `cdk deploy` again.
+
+**Stack in `ROLLBACK_COMPLETE`**: delete it with `aws cloudformation delete-stack --stack-name SignedDataOrgHomeStack --region us-east-1` before redeploying.
+
 ---
 
 ## License
