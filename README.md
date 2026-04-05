@@ -12,7 +12,7 @@ SignedData fixes that.
 
 ### [cds](https://github.com/signed-data/cds) — The Standard
 
-The **Curated Data Standard** defines a universal envelope for real-time data. Any domain — weather, football scores, lottery results, news headlines — is wrapped in the same structure, signed with RSA-PSS, and distributed with an embedded LLM-generated summary.
+The **Curated Data Standard** defines a universal envelope for real-time data. Any domain — weather, football scores, lottery results, financial rates, or commodity prices — is wrapped in the same structure, signed with RSA-PSS, and distributed with an embedded human-readable context summary.
 
 ```json
 {
@@ -32,6 +32,24 @@ An [MCP](https://modelcontextprotocol.io) server that exposes Brazilian lottery 
 ```bash
 pip install signeddata-mcp-lottery
 python -m cds_mcp_lottery mega-sena
+```
+
+### [cds/mcp/finance](https://github.com/signed-data/cds/tree/main/mcp/finance) — MCP Product
+
+The Brazil finance MCP product exposes SELIC, IPCA, PTAX FX rates, B3 quotes, and Copom decisions as signed tools for Claude and other MCP clients.
+
+```bash
+pip install signeddata-mcp-finance
+signeddata-mcp-finance --transport sse --port 8010
+```
+
+### [cds/mcp/commodities](https://github.com/signed-data/cds/tree/main/mcp/commodities) — MCP Product
+
+The Brazil commodities MCP product exposes B3 agro futures, CONAB spot crop prices, and auditable basis spreads as signed tools for Claude and other MCP clients.
+
+```bash
+pip install signeddata-mcp-commodities
+signeddata-mcp-commodities --transport sse --port 8011
 ```
 
 ---
@@ -71,6 +89,8 @@ We only ingest from APIs with structured, reliable output. No scraping. No unver
 | `sports.football` | Match results, live scores, standings | stable |
 | `news` | Headlines from verified publishers | stable |
 | `finance` | Quotes, prices, indices | stable |
+| `finance.brazil` | SELIC, IPCA, PTAX FX, B3 quotes, Copom | active |
+| `commodities.brazil` | B3 agro futures, CONAB spot prices, World Bank benchmarks | active |
 | `religion.bible` | Verses and passages | stable |
 | `government.brazil` | Diário Oficial, licitações | stable |
 | `lottery.brazil` | Caixa draws — Mega Sena, Lotofácil, Quina, Lotomania, Dupla Sena | stable |
