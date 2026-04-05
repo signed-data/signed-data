@@ -1,0 +1,83 @@
+---
+title: SignedData
+description: An open standard for curated, cryptographically signed, real-time data. CDS, SDKs, and reference operators.
+template: splash
+hero:
+  title: SignedData
+  tagline: An open standard for curated, cryptographically signed, real-time data.
+  actions:
+    - text: View on GitHub
+      link: https://github.com/signed-data
+      icon: external
+      variant: primary
+---
+
+## Problem
+
+<div class="card-section">
+
+When you receive JSON from a third-party feed, you trust the transport, intermediaries,
+and source at once. There is no proof that the payload is exactly what was published,
+by whom, or when.
+
+</div>
+
+## What we build
+
+<div class="card-section">
+
+**[cds](https://github.com/signed-data/cds)** — the
+**Curated Data Standard**: a universal envelope for real-time data
+(weather, sports, lottery, news, …), signed with RSA-PSS, with an embedded summary.
+
+**[mcp-lottery](https://github.com/signed-data/mcp-lottery)** —
+MCP server exposing Brazilian lottery draws as tools for Claude and other agents.
+
+</div>
+
+## SDKs
+
+<div class="card-section">
+
+| Language     | Package               | Install                           |
+| ------------ | --------------------- | --------------------------------- |
+| Python 3.12+ | `signeddata-cds`      | `pip install signeddata-cds`      |
+| TypeScript   | `@signeddata/cds-sdk` | `npm install @signeddata/cds-sdk` |
+
+</div>
+
+## Principles
+
+<div class="card-section">
+
+- **Standard is the contract.** CDS and SDKs are infrastructure-agnostic; anyone can run ingestors and operators.
+- **Provenance, not only TLS.** HTTPS secures the channel; signatures anchor the payload.
+- **LLM-ready.** Events include a `context.summary` so data and meaning travel together.
+- **Curated.** Structured sources, registered and fingerprinted — no unverified scraping.
+
+</div>
+
+## Domains
+
+<div class="card-section">
+
+| Domain              | Focus                                 |
+| ------------------- | ------------------------------------- |
+| `weather`           | Forecasts and current conditions      |
+| `sports.football`   | Results, live scores, standings       |
+| `news`              | Headlines from verified publishers    |
+| `finance`           | Quotes, prices, indices               |
+| `religion.bible`    | Verses and passages                   |
+| `government.brazil` | Diário Oficial, licitações            |
+| `lottery.brazil`    | Caixa draws (Mega Sena, Lotofácil, …) |
+
+</div>
+
+<footer>
+
+MIT ·
+[This site on GitHub](https://github.com/signed-data/signed-data) ·
+[signed-data.org](https://signed-data.org) ·
+[signeddata.org](https://signeddata.org)
+
+</footer>

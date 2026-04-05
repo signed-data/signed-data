@@ -1,0 +1,83 @@
+---
+title: SignedData
+description: Um padrão aberto para dados em tempo real curados e assinados criptograficamente. CDS, SDKs e operadores de referência.
+template: splash
+hero:
+  title: SignedData
+  tagline: Um padrão aberto para dados em tempo real curados e assinados criptograficamente.
+  actions:
+    - text: Ver no GitHub
+      link: https://github.com/signed-data
+      icon: external
+      variant: primary
+---
+
+## Problema
+
+<div class="card-section">
+
+Quando você recebe um JSON de um feed de terceiros, está confiando no transporte, nos
+intermediários e na fonte ao mesmo tempo. Não há prova de que o payload é exatamente
+o que foi publicado, por quem ou quando.
+
+</div>
+
+## O que construímos
+
+<div class="card-section">
+
+**[cds](https://github.com/signed-data/cds)** — o
+**Curated Data Standard**: um envelope universal para dados em tempo real
+(clima, esportes, loteria, notícias, …), assinado com RSA-PSS, com um resumo embutido.
+
+**[mcp-lottery](https://github.com/signed-data/mcp-lottery)** —
+Servidor MCP que expõe resultados de loterias brasileiras como ferramentas para o Claude e outros agentes.
+
+</div>
+
+## SDKs
+
+<div class="card-section">
+
+| Linguagem    | Pacote                | Instalação                        |
+| ------------ | --------------------- | --------------------------------- |
+| Python 3.12+ | `signeddata-cds`      | `pip install signeddata-cds`      |
+| TypeScript   | `@signeddata/cds-sdk` | `npm install @signeddata/cds-sdk` |
+
+</div>
+
+## Princípios
+
+<div class="card-section">
+
+- **O padrão é o contrato.** CDS e SDKs são agnósticos de infraestrutura; qualquer pessoa pode operar ingestores e operadores.
+- **Proveniência, não apenas TLS.** HTTPS protege o canal; assinaturas ancoram o payload.
+- **Pronto para LLMs.** Eventos incluem um `context.summary` para que dados e significado viajem juntos.
+- **Curado.** Fontes estruturadas, registradas e com fingerprint — sem scraping não verificado.
+
+</div>
+
+## Domínios
+
+<div class="card-section">
+
+| Domínio             | Foco                                         |
+| ------------------- | -------------------------------------------- |
+| `weather`           | Previsões e condições atuais                 |
+| `sports.football`   | Resultados, placares ao vivo, classificações |
+| `news`              | Manchetes de editores verificados            |
+| `finance`           | Cotações, preços, índices                    |
+| `religion.bible`    | Versículos e passagens                       |
+| `government.brazil` | Diário Oficial, licitações                   |
+| `lottery.brazil`    | Sorteios da Caixa (Mega Sena, Lotofácil, …)  |
+
+</div>
+
+<footer>
+
+MIT ·
+[Este site no GitHub](https://github.com/signed-data/signed-data) ·
+[signed-data.org](https://signed-data.org) ·
+[signeddata.org](https://signeddata.org)
+
+</footer>

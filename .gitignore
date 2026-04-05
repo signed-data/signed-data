@@ -2,3 +2,6 @@
 *.swp
 infra/node_modules/
 infra/cdk.out/
+site/node_modules/
+site/dist/
+site/.astro/

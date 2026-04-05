@@ -1,0 +1,105 @@
+/* SignedData — custom Starlight theme
+ *
+ * Preserves the original dark-first aesthetic with DM Sans,
+ * sky-blue accent, and subtle card borders.
+ */
+
+/* ── Font ── */
+:root {
+  --sl-font: 'DM Sans', system-ui, sans-serif;
+}
+
+/* ── Accent: sky-blue (dark) / deep-sky (light) ── */
+:root {
+  --sl-color-accent-low: #0c2d4a;
+  --sl-color-accent: #7dd3fc;
+  --sl-color-accent-high: #e0f4ff;
+}
+:root[data-theme='light'] {
+  --sl-color-accent-low: #e0f4ff;
+  --sl-color-accent: #0369a1;
+  --sl-color-accent-high: #032e4e;
+}
+
+/* ── Background tones ── */
+:root {
+  --sl-color-bg-nav: #0c0f14;
+  --sl-color-bg-sidebar: #0e1118;
+  --sl-color-bg: #0c0f14;
+  --sl-color-hairline-light: rgba(255, 255, 255, 0.08);
+}
+:root[data-theme='light'] {
+  --sl-color-bg-nav: #f6f7f9;
+  --sl-color-bg-sidebar: #f0f1f4;
+  --sl-color-bg: #f6f7f9;
+  --sl-color-hairline-light: #e2e5eb;
+}
+
+/* ── Content width ── */
+:root {
+  --sl-content-width: 44rem;
+}
+
+/* ── Hero section on splash page ── */
+.hero {
+  padding-block: 2rem;
+}
+.hero .tagline {
+  font-size: 1.125rem;
+  color: var(--sl-color-gray-3);
+}
+:root[data-theme='light'] .hero .tagline {
+  color: var(--sl-color-gray-4);
+}
+
+/* ── Card-like sections (reuse in MDX via <div class="card">) ── */
+.card-section {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 1.25rem 1.35rem;
+  margin-bottom: 1.5rem;
+}
+:root[data-theme='light'] .card-section {
+  background: #fff;
+  border-color: #e2e5eb;
+}
+
+/* ── Uppercase section labels ── */
+.sl-markdown-content h2 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--sl-color-gray-3);
+  border-bottom: none;
+  margin-top: 2.5rem;
+}
+
+/* ── Tables ── */
+.sl-markdown-content table {
+  font-size: 0.9rem;
+}
+.sl-markdown-content th {
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ── Hide sidebar on splash pages (single-page marketing site) ── */
+[data-has-sidebar] .right-sidebar,
+.sidebar-pane {
+  display: none;
+}
+[data-has-sidebar] main {
+  --sl-content-pad-inline: 1.5rem;
+}
+
+/* ── Footer ── */
+.sl-markdown-content footer {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--sl-color-hairline-light);
+  font-size: 0.875rem;
+  color: var(--sl-color-gray-3);
+}

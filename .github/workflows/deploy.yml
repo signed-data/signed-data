@@ -4,9 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - "site/**"
-      - "infra/**"
-      - ".github/workflows/deploy.yml"
+      - 'site/**'
+      - 'infra/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 permissions:
@@ -48,9 +48,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: '22'
           cache: npm
-          cache-dependency-path: infra/package-lock.json
+          cache-dependency-path: |
+            infra/package-lock.json
+            site/package-lock.json
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -85,10 +87,16 @@ jobs:
           echo "bucket=$BUCKET" >> "$GITHUB_OUTPUT"
           echo "distribution=$DIST" >> "$GITHUB_OUTPUT"
 
+      - name: Build Astro site
+        working-directory: ${{ github.workspace }}/site
+        run: |
+          npm ci
+          npm run build
+
       - name: Sync site to S3
         working-directory: ${{ github.workspace }}
         run: |
-          aws s3 sync site/ "s3://${{ steps.resolve.outputs.bucket }}/" \
+          aws s3 sync site/dist/ "s3://${{ steps.resolve.outputs.bucket }}/" \
             --delete \
             --cache-control "public, max-age=3600"
 
