@@ -1,0 +1,170 @@
+---
+title: Assine seu primeiro evento
+description: Um passo a passo de geração de par de chaves, construção de um evento e assinatura.
+---
+
+import { Steps, Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Este tutorial te guia pela produção do seu primeiro evento CDS assinado
+criptograficamente. Você vai instalar o SDK, gerar um par de chaves RSA-4096, construir um
+evento em código e assiná-lo. O exercício inteiro leva menos de cinco minutos.
+
+## Pré-requisitos
+
+- Python 3.12+ **ou** Node.js 20+
+- Um diretório de trabalho vazio
+
+<Steps>
+
+1. **Instale o SDK**
+
+   <Tabs>
+     <TabItem label="Python">
+   ```bash
+   pip install signeddata-cds
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```bash
+   npm install @signeddata/cds-sdk
+   ```
+     </TabItem>
+   </Tabs>
+
+2. **Gere um par de chaves RSA-4096**
+
+   O produtor detém a chave privada. Consumidores só precisam da chave pública.
+
+   <Tabs>
+     <TabItem label="Python">
+   ```python
+   from cds import generate_keypair
+   import os
+
+   os.makedirs("keys", exist_ok=True)
+   generate_keypair("keys/private.pem", "keys/public.pem")
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```typescript
+   import { generateKeypair } from "@signeddata/cds-sdk";
+   import { mkdirSync } from "node:fs";
+
+   mkdirSync("keys", { recursive: true });
+   generateKeypair("keys/private.pem", "keys/public.pem");
+   ```
+     </TabItem>
+   </Tabs>
+
+   <Aside type="caution" title="Proteja sua chave privada">
+   Adicione `keys/` ao `.gitignore` imediatamente. Em produção, armazene a chave privada
+   no AWS Secrets Manager, Azure Key Vault ou em um HSM. Nunca a comite.
+   </Aside>
+
+3. **Construa um evento CDS**
+
+   Este exemplo constrói um evento de clima para Londres usando o tipo de conteúdo canônico
+   `WEATHER_CURRENT`.
+
+   <Tabs>
+     <TabItem label="Python">
+   ```python
+   from cds import CDSEvent, SourceMeta, ContextMeta, CDSVocab, CDSSources
+   from datetime import datetime, timezone
+
+   event = CDSEvent(
+       content_type  = CDSVocab.WEATHER_CURRENT,
+       source        = SourceMeta(id=CDSSources.OPEN_METEO),
+       occurred_at   = datetime.now(timezone.utc),
+       lang          = "en",
+       payload       = {
+           "location":    {"city": "London", "lat": 51.51, "lon": -0.13},
+           "temperature": {"current": 14.0, "feels_like": 12.0},
+           "condition":   "overcast",
+       },
+       event_context = ContextMeta(
+           summary = "London: overcast, 14C (feels 12C).",
+           model   = "rule-based-v1",
+       ),
+   )
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```typescript
+   import { CDSEvent, CDSVocab, CDSSources } from "@signeddata/cds-sdk";
+
+   const event = new CDSEvent({
+     content_type: CDSVocab.WEATHER_CURRENT,
+     source:       { "@id": CDSSources.OPEN_METEO },
+     occurred_at:  new Date(),
+     lang:         "en",
+     payload:      {
+       location:    { city: "London", lat: 51.51, lon: -0.13 },
+       temperature: { current: 14.0, feels_like: 12.0 },
+       condition:   "overcast",
+     },
+     context: {
+       summary:      "London: overcast, 14C (feels 12C).",
+       model:        "rule-based-v1",
+       generated_at: new Date().toISOString(),
+     },
+   });
+   ```
+     </TabItem>
+   </Tabs>
+
+4. **Assine o evento**
+
+   <Tabs>
+     <TabItem label="Python">
+   ```python
+   from cds import CDSSigner
+
+   signer = CDSSigner("keys/private.pem", issuer="https://myorg.example.com")
+   signer.sign(event)
+
+   print(event.integrity.hash)       # sha256:...
+   print(event.integrity.signed_by)  # https://myorg.example.com
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```typescript
+   import { CDSSigner } from "@signeddata/cds-sdk";
+
+   const signer = new CDSSigner("keys/private.pem", "https://myorg.example.com");
+   signer.sign(event);
+
+   console.log(event.integrity?.hash);       // sha256:...
+   console.log(event.integrity?.signed_by);  // https://myorg.example.com
+   ```
+     </TabItem>
+   </Tabs>
+
+5. **Inspecione o JSON-LD assinado**
+
+   <Tabs>
+     <TabItem label="Python">
+   ```python
+   import json
+   print(json.dumps(event.to_jsonld(), indent=2))
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```typescript
+   console.log(JSON.stringify(event.toJSON(), null, 2));
+   ```
+     </TabItem>
+   </Tabs>
+
+   Você deveria ver um documento JSON com `@context`, `@type`, `@id` e um
+   bloco `integrity` contendo o hash SHA-256 e a assinatura RSA-PSS codificada
+   em base64. Este é um evento CDS v0.2.0 completo e verificável.
+
+</Steps>
+
+## Próximos passos
+
+- [Verifique um evento CDS](/docs/tutorials/verify-event/) — verifique a assinatura com a chave pública
+- [Conecte o Claude a um servidor MCP](/docs/tutorials/claude-mcp-setup/) — dê ao Claude acesso a dados assinados
+- [Auto-hospede um emissor](/docs/tutorials/self-host-issuer/) — rode sua própria configuração de produção
+- [Assinatura](/docs/signing/) — os detalhes criptográficos

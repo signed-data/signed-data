@@ -1,0 +1,52 @@
+---
+title: companies.brazil
+description: Especificación del dominio para consultas firmadas de empresas brasileñas.
+---
+
+**Versión:** 1.0.0
+**URI del dominio:** `https://signed-data.org/vocab/companies-brazil/`
+**Estado:** Activo
+
+## Visión general
+
+El dominio `companies.brazil` proporciona datos certificados y firmados de registro de
+empresas CNPJ de la Receita Federal brasileña vía BrasilAPI. Este es un dominio
+**dirigido por consultas** — los datos se obtienen bajo demanda por cada consulta CNPJ, no de
+forma programada.
+
+## Fuentes de datos
+
+| Fuente | URI | Auth | Licencia |
+|---|---|---|---|
+| BrasilAPI | `https://signed-data.org/sources/brasilapi.com.br.v1` | ninguna | MIT |
+
+## Tipos de contenido
+
+| Esquema | URI del tipo de contenido | Fuente | Cadencia |
+|---|---|---|---|
+| `profile.cnpj` | `.../companies-brazil/profile-cnpj` | BrasilAPI | Bajo demanda |
+| `partners.cnpj` | `.../companies-brazil/partners-cnpj` | BrasilAPI | Bajo demanda |
+| `cnae.profile` | `.../companies-brazil/cnae-profile` | BrasilAPI | Referencia |
+
+Todos los URIs llevan el prefijo `https://signed-data.org/vocab/`.
+
+## Patrón del ingestor
+
+Dirigido por consultas. No hay ingestor programado. El servidor MCP obtiene y firma
+los datos de CNPJ en cada solicitud. La firma CDS prueba que BrasilAPI devolvió
+estos datos en la marca de tiempo de la consulta.
+
+## Validación de CNPJ
+
+Todas las consultas validan los dígitos verificadores del CNPJ antes de hacer cualquier llamada a la API. El
+CNPJ brasileño tiene dos dígitos verificadores calculados con un algoritmo estándar. Los CNPJs
+inválidos se cortocircuitan con una respuesta de error y nunca llegan a BrasilAPI.
+
+## Idioma
+
+Todos los eventos usan `lang: "pt-BR"`.
+
+## Página del producto
+
+Los datos firmados de `companies.brazil` se exponen como herramientas MCP en
+[companies.mcp.signed-data.org](/products/companies/).

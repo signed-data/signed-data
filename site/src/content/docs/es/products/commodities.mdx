@@ -1,0 +1,123 @@
+---
+title: Commodities (Brasil)
+description: Datos de commodities brasileñas firmados — futuros agro B3, precios spot físicos de CONAB y spreads de base auditables — como herramientas MCP para Claude.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Datos de commodities brasileñas firmados y verificados como herramientas MCP para Claude. Futuros agro B3,
+precios físicos de cosechas de CONAB y spreads de base auditables.
+
+**Endpoint:** `https://commodities.mcp.signed-data.org/mcp`
+**Especificación del dominio:** [commodities.brazil](/docs/spec/domains/commodities-brazil/)
+
+## Inicio rápido
+
+<Tabs>
+  <TabItem label="Remoto (sin instalación)">
+
+Añádelo a tu configuración de Claude Desktop (`~/.config/claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "signeddata-commodities": {
+      "url": "https://commodities.mcp.signed-data.org/mcp"
+    }
+  }
+}
+```
+
+O pruébalo con curl:
+
+```bash
+curl -X POST https://commodities.mcp.signed-data.org/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+  </TabItem>
+  <TabItem label="Local">
+
+```bash
+pip install signeddata-cds
+pip install "git+https://github.com/signed-data/cds.git#subdirectory=mcp/commodities"
+signeddata-mcp-commodities
+```
+
+Luego añádelo a Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "signeddata-commodities": {
+      "command": "signeddata-mcp-commodities"
+    }
+  }
+}
+```
+
+  </TabItem>
+  <TabItem label="Desde el código fuente">
+
+```bash
+git clone https://github.com/signed-data/cds.git && cd cds
+pip install -e sdk/python
+pip install -e mcp/commodities
+signeddata-mcp-commodities
+```
+
+  </TabItem>
+</Tabs>
+
+## Herramientas
+
+| Herramienta | Descripción |
+|---|---|
+| `get_soja_futures` | Última cotización de futuros de soja en B3 |
+| `get_all_agro_futures` | Todos los futuros agrícolas de B3 soportados |
+| `get_futures_by_commodity` | Cotización de futuros B3 individuales por ticker |
+| `get_soja_spot_prices` | Precios spot CONAB de soja por estado |
+| `get_spot_by_commodity` | Precios spot CONAB para soja, milho, trigo o algodão |
+| `get_commodity_summary` | Futuros junto con precios spot |
+| `get_basis` | Spread de base auditable: spot menos futuros |
+
+## API HTTP
+
+```bash
+# Información del servicio
+curl https://commodities.mcp.signed-data.org/
+
+# Todos los futuros agro
+curl https://commodities.mcp.signed-data.org/tool/get_all_agro_futures
+
+# Un ticker de futuros B3
+curl "https://commodities.mcp.signed-data.org/tool/get_futures_by_commodity?ticker=SFI"
+
+# Precios spot CONAB
+curl "https://commodities.mcp.signed-data.org/tool/get_soja_spot_prices?states=MT&states=GO"
+
+# Spread de base
+curl "https://commodities.mcp.signed-data.org/tool/get_basis?commodity=soja&state=MT"
+```
+
+## Fuentes de datos
+
+| Fuente | URL | Auth |
+|---|---|---|
+| Brapi (futuros B3) | `brapi.dev/api` | Ninguna (free tier, 15 req/min) |
+| CONAB | `consultaweb.conab.gov.br` | Ninguna |
+| Indicadores de commodities del Banco Mundial | `api.worldbank.org/v2/en/indicator` | Ninguna |
+
+## Variables de entorno
+
+| Variable | Descripción | Predeterminado |
+|---|---|---|
+| `CDS_PRIVATE_KEY_PATH` | Ruta a la clave privada RSA para firmar | (sin firma si no se establece) |
+| `CDS_PUBLIC_KEY_PATH` | Ruta a la clave pública RSA para verificación | (omitir verificación) |
+| `CDS_ISSUER` | URI del emisor en eventos firmados | `signed-data.org` |
+
+<Aside type="note">
+Todos los datos se firman criptográficamente con `signed-data.org` cuando las claves están configuradas.
+El endpoint alojado siempre firma.
+</Aside>

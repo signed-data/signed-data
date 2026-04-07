@@ -86,12 +86,16 @@
   letter-spacing: 0.06em;
 }
 
-/* ── Hide sidebar on splash pages (single-page marketing site) ── */
-[data-has-sidebar] .right-sidebar,
-.sidebar-pane {
+/* ── Hide sidebar on splash pages only ──
+ * Starlight sets data-has-hero="" on the <body> for pages using
+ * `template: splash`. We scope sidebar-hide to that attribute so
+ * regular docs pages keep their sidebar.
+ */
+body[data-has-hero] .right-sidebar,
+body[data-has-hero] .sidebar-pane {
   display: none;
 }
-[data-has-sidebar] main {
+body[data-has-hero] main {
   --sl-content-pad-inline: 1.5rem;
 }
 

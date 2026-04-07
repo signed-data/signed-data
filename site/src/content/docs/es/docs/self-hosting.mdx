@@ -1,0 +1,149 @@
+---
+title: Auto-alojamiento
+description: Ejecuta tu propio emisor CDS con tu propio par de claves y vocabulario.
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+No necesitas usar `signed-data.org` como tu proveedor de datos. CDS es un estándar
+— el SDK, la especificación y los esquemas de dominio son libres de infraestructura. Ejecuta tus propios
+ingestores, firma con tu propia clave y sirve tus propios eventos.
+
+## Lo que necesitas
+
+| Componente | Mínimo viable | Producción |
+|---|---|---|
+| Clave privada | Archivo PEM local | AWS Secrets Manager / KMS |
+| Ingestor | Script Python | Lambda / contenedor (cron) |
+| Almacén de eventos | Archivos locales | S3 (append-only, versionado) |
+| API del consumidor | Lectura desde disco | API Gateway / ALB + Lambda / ECS |
+| Servidor MCP | `signeddata-mcp-lottery` | ECS Fargate detrás de ALB |
+
+## Configuración mínima viable (local)
+
+```bash
+pip install signeddata-cds
+
+# Generar claves
+python3 -c "
+from cds import generate_keypair
+import os; os.makedirs('keys', exist_ok=True)
+generate_keypair('keys/private.pem', 'keys/public.pem')
+"
+```
+
+```python
+import asyncio
+from cds import CDSSigner
+from cds.sources.lottery import MegaSenaIngestor
+
+signer   = CDSSigner("keys/private.pem", issuer="https://mycompany.example.com")
+ingestor = MegaSenaIngestor(signer=signer)
+events   = asyncio.run(ingestor.ingest())
+
+for e in events:
+    print(e.context.summary)
+    print(f"  signed_by: {e.integrity.signed_by}")
+    print(f"  hash:      {e.integrity.hash[:32]}...")
+```
+
+## Identidad del emisor
+
+Establece tu `issuer` al URI de tu organización:
+
+```python
+signer = CDSSigner("keys/private.pem", issuer="https://mycompany.example.com")
+```
+
+Publica tu clave pública en:
+
+```
+https://mycompany.example.com/.well-known/cds-public-key.pem
+```
+
+Los consumidores pueden entonces descubrir y verificar tu clave automáticamente.
+
+## Publicar tu vocabulario
+
+Si ejecutas tu propio emisor CDS, deberías publicar tu vocabulario para que los consumidores
+puedan dereferenciar los URIs en tus eventos.
+
+<Steps>
+
+1. **Crea tu archivo de vocabulario**
+
+   Crea `vocab/cds.jsonld` para tu organización, listando las clases y
+   propiedades que utilizas. Puedes copiar y adaptar el vocabulario de referencia desde
+   `https://signed-data.org/vocab/`.
+
+2. **Sírvelo en tu dominio**
+
+   Sube `vocab/cds.jsonld` y cualquier archivo de dominio a tu servidor web o CDN:
+
+   ```
+   https://mycompany.example.com/vocab/          → cds.jsonld
+   https://mycompany.example.com/vocab/domains/  → archivos de dominio
+   https://mycompany.example.com/sources/        → documentos de fuentes
+   https://mycompany.example.com/contexts/       → contexto JSON-LD
+   ```
+
+   Establece `Content-Type: application/ld+json` para todos los archivos `.jsonld`.
+
+3. **Publica tu clave pública**
+
+   ```
+   https://mycompany.example.com/.well-known/cds-public-key.pem
+   ```
+
+4. **Referencia tu vocabulario en los eventos**
+
+   Tus eventos deben usar tu URI base:
+
+   ```python
+   from cds.vocab import content_type_uri, source_uri
+
+   MY_BASE = "https://mycompany.example.com"
+   my_content_type = f"{MY_BASE}/vocab/custom-domain/custom-schema"
+   my_source       = f"{MY_BASE}/sources/my-api.v1"
+   ```
+
+</Steps>
+
+## Lo que se mantiene igual
+
+Cuando te auto-alojas, el formato del envoltorio, los tipos de contenido, el algoritmo de firma y
+las especificaciones de dominio son idénticos a `signed-data.org`. Tus eventos son verificables por
+cualquier consumidor CDS — solo usan tu clave pública en lugar de la nuestra.
+
+## Lo que cambia
+
+| Propiedad | signed-data.org | Tu despliegue |
+|---|---|---|
+| `integrity.signed_by` | `https://signed-data.org` | `https://mycompany.example.com` |
+| URL de la clave pública | `signed-data.org/.well-known/...` | `mycompany.example.com/.well-known/...` |
+| Infraestructura | Nuestra cuenta AWS | Tu cuenta AWS / GCP / Azure |
+| Programación de ingestor | Nuestros crons | Tus crons |
+
+## Consumir eventos de múltiples emisores
+
+Un consumidor puede tener múltiples claves públicas y verificar contra el emisor declarado:
+
+```python
+KNOWN_ISSUERS = {
+    "signed-data.org":       CDSVerifier("signed-data-org.pub.pem"),
+    "mycompany.example.com": CDSVerifier("mycompany.pub.pem"),
+}
+
+verifier = KNOWN_ISSUERS.get(event.integrity.signed_by)
+if not verifier:
+    raise ValueError(f"Unknown issuer: {event.integrity.signed_by}")
+
+verifier.verify(event)
+```
+
+<Aside type="tip">
+El ancla de confianza en un despliegue auto-alojado es **tu organización**, no
+`signed-data.org`. Los consumidores verifican con tu clave pública. Publica tu
+vocabulario, tu contexto y tu clave pública en tu dominio para cumplir totalmente con
+Linked Data.
+</Aside>

@@ -1,0 +1,151 @@
+---
+title: Tipos de contenido
+description: Sistema de tipos de contenido basado en URI para eventos CDS.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+CDS v0.2.0 usa **tipos de contenido basados en URI** en lugar de extensiones de proveedor MIME.
+Cada tipo de contenido es un URI HTTP dereferenciable que se resuelve a una descripción
+JSON-LD del esquema.
+
+## El problema con los tipos opacos
+
+v0.1.0 usaba cadenas MIME como
+`application/vnd.cds.lottery-brazil.mega-sena-result+json;v=1`. Eran
+informativas pero no resolubles — no podías obtener la cadena para aprender lo que
+describía. Eran identificadores opacos, no Linked Data.
+
+## Tipos de contenido URI (v0.2.0)
+
+```
+https://signed-data.org/vocab/{domain-slug}/{schema-slug}
+```
+
+Cada tipo de contenido codifica:
+
+| Parte | Significado | Ejemplo |
+|---|---|---|
+| Base | Namespace fijo | `https://signed-data.org/vocab/` |
+| `{domain-slug}` | Dominio semántico (puntos → guiones) | `lottery-brazil` |
+| `{schema-slug}` | Esquema del evento dentro del dominio (puntos → guiones) | `mega-sena-result` |
+
+Ejemplos:
+
+```
+https://signed-data.org/vocab/lottery-brazil/mega-sena-result
+https://signed-data.org/vocab/sports-football/match-result
+https://signed-data.org/vocab/weather/forecast-current
+https://signed-data.org/vocab/news/headline
+https://signed-data.org/vocab/finance-brazil/rate-selic
+https://signed-data.org/vocab/commodities-brazil/futures-soja
+https://signed-data.org/vocab/companies-brazil/profile-cnpj
+```
+
+Cada URI se resuelve a un documento JSON-LD que describe el esquema, su dominio
+y enlaces a la fuente certificada.
+
+## Reglas de transformación de slugs
+
+Los nombres de dominio y esquema usan puntos en el código (p. ej., `lottery.brazil`,
+`mega-sena.result`). En los URIs, **todos los puntos se convierten en guiones**:
+
+```
+("lottery.brazil",  "mega-sena.result")   → .../vocab/lottery-brazil/mega-sena-result
+("sports.football", "match.result")       → .../vocab/sports-football/match-result
+("weather",         "forecast.current")   → .../vocab/weather/forecast-current
+```
+
+Los URIs de fuentes son distintos — **se mantienen los puntos**:
+
+```
+"caixa.gov.br.loterias.v1" → .../sources/caixa.gov.br.loterias.v1
+```
+
+## Uso de tipos de contenido en código
+
+<Tabs>
+  <TabItem label="Python">
+
+```python
+from cds.vocab import CDSVocab, CDSSources, content_type_uri
+from cds.sources.lottery_models import LotteryContentTypes
+
+# Constantes preconstruidas
+ct = CDSVocab.LOTTERY_MEGA_SENA
+ct = LotteryContentTypes.MEGA_SENA   # mismo valor
+
+# Construir desde dominio + esquema
+ct = content_type_uri("lottery.brazil", "mega-sena.result")
+# → "https://signed-data.org/vocab/lottery-brazil/mega-sena-result"
+
+# En un evento
+event.content_type   # cadena URI
+event.domain         # atajo → "lottery.brazil"
+event.event_type     # atajo → "mega-sena.result"
+```
+
+  </TabItem>
+  <TabItem label="TypeScript">
+
+```typescript
+import { CDSVocab, contentTypeUri } from "@signeddata/cds-sdk";
+import { LotteryContentTypes } from "@signeddata/cds-sdk";
+
+const ct = CDSVocab.LOTTERY_MEGA_SENA;
+const ct2 = contentTypeUri("lottery.brazil", "mega-sena.result");
+// → "https://signed-data.org/vocab/lottery-brazil/mega-sena-result"
+```
+
+  </TabItem>
+</Tabs>
+
+## Enrutamiento por tipo de contenido
+
+Como el tipo de contenido es un URI, los sistemas pueden enrutar eventos sin inspeccionar
+el payload:
+
+```json
+{
+  "source": ["cds.lottery.brazil"],
+  "detail-type": ["mega-sena.result"]
+}
+```
+
+```python
+if event.domain == "lottery.brazil" and event.event_type == "mega-sena.result":
+    result = MegaSenaResult(**event.payload)
+```
+
+## Dereferenciación
+
+Un URI de tipo de contenido no es solo una etiqueta — se resuelve a un documento JSON-LD:
+
+```bash
+curl https://signed-data.org/vocab/lottery-brazil/mega-sena-result
+```
+
+Devuelve la definición del esquema, incluyendo su dominio, descripción y enlace a
+la fuente certificada.
+
+## Convenciones de nombres
+
+- **Dominio:** minúsculas, puntos para jerarquía → `sports.football`, `government.brazil`
+- **Nombre del esquema:** minúsculas, puntos o guiones → `match.result`, `mega-sena.result`
+- **En URIs:** todos los puntos se convierten en guiones → `sports-football`, `mega-sena-result`
+- **En código:** usa las constantes preconstruidas (p. ej., `CDSVocab.LOTTERY_MEGA_SENA`)
+
+## Registrar un nuevo tipo de contenido
+
+Para añadir un nuevo dominio o esquema al estándar:
+
+1. Abre un issue en [`signed-data/cds`](https://github.com/signed-data/cds/issues) con la etiqueta `domain-proposal`
+2. Incluye: fuente de datos, ejemplo de respuesta, borrador del esquema del payload
+3. Crea un PR añadiendo `spec/domains/{domain}.md` y `vocab/domains/{domain}.jsonld`
+4. Añade modelos e ingestor al SDK
+
+<Aside type="tip">
+La transformación de slugs es mecánica unidireccional: los puntos se convierten en guiones en los URIs,
+pero los nombres canónicos del lado del código mantienen los puntos. Usa siempre las constantes del SDK
+cuando estén disponibles — codifican la forma correcta para cada contexto.
+</Aside>

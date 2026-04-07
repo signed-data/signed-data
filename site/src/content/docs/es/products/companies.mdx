@@ -1,0 +1,104 @@
+---
+title: Empresas (Brasil)
+description: Datos de empresas brasileñas firmados — perfiles CNPJ, registros de socios (QSA) y consultas CNAE — como herramientas MCP para Claude.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Datos firmados y verificados del registro de empresas brasileñas como herramientas MCP para Claude.
+Perfiles CNPJ, registros de socios (QSA — *quadro societário*) y consultas de actividad económica
+CNAE, todos provenientes de BrasilAPI (que replica la Receita Federal).
+
+**Endpoint:** `https://companies.mcp.signed-data.org/mcp`
+**Especificación del dominio:** [companies.brazil](/docs/spec/domains/companies-brazil/)
+
+Este es un producto **dirigido por consultas** — no hay ingestión programada. Cada consulta de
+CNPJ se obtiene y se firma en el momento de la solicitud. La firma CDS prueba *que* BrasilAPI
+devolvió estos datos en la marca de tiempo de la consulta.
+
+## Inicio rápido
+
+<Tabs>
+  <TabItem label="Remoto (sin instalación)">
+
+```json
+{
+  "mcpServers": {
+    "signeddata-companies": {
+      "url": "https://companies.mcp.signed-data.org/mcp"
+    }
+  }
+}
+```
+
+```bash
+curl -X POST https://companies.mcp.signed-data.org/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+  </TabItem>
+  <TabItem label="Local">
+
+```bash
+pip install signeddata-cds
+pip install "git+https://github.com/signed-data/cds.git#subdirectory=mcp/companies"
+signeddata-mcp-companies
+```
+
+  </TabItem>
+  <TabItem label="Desde el código fuente">
+
+```bash
+git clone https://github.com/signed-data/cds.git && cd cds
+pip install -e sdk/python
+pip install -e mcp/companies
+signeddata-mcp-companies
+```
+
+  </TabItem>
+</Tabs>
+
+## Herramientas
+
+| Herramienta | Descripción |
+|---|---|
+| `get_company_profile` | Perfil CNPJ completo — razão social, situação cadastral, endereço, capital social, CNAE |
+| `get_company_partners` | Registros de socios / accionistas (QSA) de un CNPJ |
+| `check_company_status` | Verificación rápida del estado `ATIVA` / `BAIXADA` |
+| `validate_cnpj_tool` | Valida los dígitos verificadores del CNPJ sin hacer ninguna llamada a la API |
+| `get_cnae_info` | Consulta un código de actividad económica (CNAE) |
+| `batch_company_lookup` | Consulta hasta 10 CNPJs en una sola llamada |
+
+## Validación de CNPJ
+
+Todas las consultas validan los dígitos verificadores del CNPJ antes de hacer cualquier llamada a la API. Los CNPJs
+inválidos se cortocircuitan con una respuesta de error y nunca llegan a BrasilAPI. Usa `validate_cnpj_tool`
+para validar sin consumir una solicitud.
+
+## Tipos de contenido
+
+| Esquema | URI del tipo de contenido |
+|---|---|
+| `profile.cnpj` | `https://signed-data.org/vocab/companies-brazil/profile-cnpj` |
+| `partners.cnpj` | `https://signed-data.org/vocab/companies-brazil/partners-cnpj` |
+| `cnae.profile` | `https://signed-data.org/vocab/companies-brazil/cnae-profile` |
+
+## Fuente de datos
+
+| Fuente | URL | Auth | Licencia |
+|---|---|---|---|
+| BrasilAPI | `brasilapi.com.br` | Ninguna | MIT |
+
+## Variables de entorno
+
+| Variable | Descripción | Predeterminado |
+|---|---|---|
+| `CDS_PRIVATE_KEY_PATH` | Ruta a la clave privada RSA para firmar | (sin firma si no se establece) |
+| `CDS_PUBLIC_KEY_PATH` | Ruta a la clave pública RSA para verificación | (omitir verificación) |
+| `CDS_ISSUER` | URI del emisor en eventos firmados | `signed-data.org` |
+
+<Aside type="caution">
+La firma CDS atestigua *lo que devolvió BrasilAPI*, no el registro subyacente de la Receita
+Federal en cualquier momento posterior. Trata los datos de las empresas como una instantánea puntual.
+</Aside>

@@ -1,0 +1,138 @@
+---
+title: lottery.brazil
+description: Especificação de domínio para sorteios assinados das loterias brasileiras da Caixa.
+---
+
+**Status:** Ativo
+**Fonte:** Caixa Econômica Federal — Loterias
+**URI da fonte:** `https://signed-data.org/sources/caixa.gov.br.loterias.v1`
+**Base da API:** `https://servicebus2.caixa.gov.br/portaldeloterias/api`
+**Auth:** Nenhuma (público)
+**País:** BR
+
+## URIs Linked Data
+
+| Schema | URI do tipo de conteúdo |
+|---|---|
+| Resultado da Mega Sena | `.../lottery-brazil/mega-sena-result` |
+| Resultado da Lotofácil | `.../lottery-brazil/lotofacil-result` |
+| Resultado da Quina | `.../lottery-brazil/quina-result` |
+| Resultado da Lotomania | `.../lottery-brazil/lotomania-result` |
+| Resultado da Dupla Sena | `.../lottery-brazil/dupla-sena-result` |
+
+Todas as URIs têm o prefixo `https://signed-data.org/vocab/`.
+
+- Documento da fonte: `https://signed-data.org/sources/caixa.gov.br.loterias.v1`
+- Vocabulário do domínio: `https://signed-data.org/vocab/domains/lottery-brazil.jsonld`
+
+## Exemplo de evento
+
+```json
+{
+  "@context": "https://signed-data.org/contexts/cds/v1.jsonld",
+  "@type":    "https://signed-data.org/vocab/CuratedDataEvent",
+  "@id":      "https://signed-data.org/events/a3f8c2d1-4e2b-4f8a-9c1d-2e3f4a5b6c7d",
+
+  "spec_version": "0.2.0",
+  "id":           "a3f8c2d1-4e2b-4f8a-9c1d-2e3f4a5b6c7d",
+
+  "content_type": "https://signed-data.org/vocab/lottery-brazil/mega-sena-result",
+
+  "source": {
+    "@id":         "https://signed-data.org/sources/caixa.gov.br.loterias.v1",
+    "fingerprint": "sha256:b310739720e5f948..."
+  },
+
+  "occurred_at":  "2026-03-29T00:00:00Z",
+  "ingested_at":  "2026-03-29T00:00:04Z",
+  "lang":         "pt-BR",
+
+  "payload": {
+    "concurso": 2800,
+    "data_apuracao": "29/03/2026",
+    "data_apuracao_iso": "2026-03-29",
+    "dezenas": ["04", "12", "25", "36", "47", "59"],
+    "acumulado": false,
+    "premiacoes": [
+      {
+        "tier": 1,
+        "description": "Sena",
+        "winners": 2,
+        "prize_amount": 45000000.00,
+        "total_prize": 90000000.00
+      }
+    ]
+  },
+
+  "context": {
+    "summary": "Mega Sena concurso 2800 (29/03/2026): dezenas: 04 · 12 · 25 · 36 · 47 · 59. 2 ganhadores da sena, prêmio de R$ 45.000.000,00 cada.",
+    "model": "rule-based-v1",
+    "generated_at": "2026-03-29T00:00:05Z"
+  },
+
+  "integrity": {
+    "hash":      "sha256:a1b2c3d4e5f6...",
+    "signature": "MX6rj3qKQkpDIUbc1NXd...",
+    "signed_by": "https://signed-data.org"
+  }
+}
+```
+
+## Jogos
+
+### Mega Sena
+
+- **Tipo de conteúdo:** `https://signed-data.org/vocab/lottery-brazil/mega-sena-result`
+- **Números:** 6 de 1–60
+- **Sorteios:** Quarta e Sábado
+- **Endpoint:** `GET /portaldeloterias/api/megasena/{concurso}`
+
+### Lotofácil
+
+- **Tipo de conteúdo:** `https://signed-data.org/vocab/lottery-brazil/lotofacil-result`
+- **Números:** 15 de 1–25
+- **Sorteios:** Segunda–Sexta
+- **Endpoint:** `GET /portaldeloterias/api/lotofacil/{concurso}`
+
+### Quina
+
+- **Tipo de conteúdo:** `https://signed-data.org/vocab/lottery-brazil/quina-result`
+- **Números:** 5 de 1–80
+- **Sorteios:** Segunda–Sexta
+- **Endpoint:** `GET /portaldeloterias/api/quina/{concurso}`
+
+### Lotomania
+
+- **Tipo de conteúdo:** `https://signed-data.org/vocab/lottery-brazil/lotomania-result`
+- **Números:** 20 de 100
+- **Sorteios:** Segunda, Quarta, Sexta
+- **Endpoint:** `GET /portaldeloterias/api/lotomania/{concurso}`
+
+### Dupla Sena
+
+- **Tipo de conteúdo:** `https://signed-data.org/vocab/lottery-brazil/dupla-sena-result`
+- **Números:** Dois sorteios de 6 de 1–50
+- **Sorteios:** Segunda, Sexta
+- **Endpoint:** `GET /portaldeloterias/api/duplasena/{concurso}`
+
+## Schema do payload (exemplo Mega Sena)
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `concurso` | `int` | Número do sorteio |
+| `data_apuracao` | `string` | Data do sorteio (DD/MM/AAAA) |
+| `data_apuracao_iso` | `string` | Data do sorteio (AAAA-MM-DD) |
+| `local_sorteio` | `string` | Nome do local |
+| `cidade_uf` | `string` | Cidade / estado |
+| `dezenas` | `string[]` | Números sorteados, ordenados |
+| `dezenas_ordem_sorteio` | `string[]` | Números na ordem do sorteio |
+| `acumulado` | `boolean` | Verdadeiro se o prêmio acumulou |
+| `premiacoes` | `PrizeTier[]` | Detalhamento do prêmio por faixa |
+| `valor_arrecadado` | `number` | Receita total (BRL) |
+| `valor_acumulado_proximo` | `number` | Estimativa do próximo prêmio (BRL) |
+| `data_proximo_concurso` | `string` | Data do próximo sorteio |
+
+## Página do produto
+
+Os dados assinados de `lottery.brazil` são expostos como ferramentas MCP via a
+[página do produto loterias](/products/lottery/).

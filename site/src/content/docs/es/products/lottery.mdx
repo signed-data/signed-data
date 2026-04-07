@@ -1,0 +1,103 @@
+---
+title: Loterías (Brasil)
+description: Resultados firmados de las loterías brasileñas Caixa — Mega Sena, Lotofácil, Quina, Lotomania, Dupla Sena — como herramientas MCP para Claude.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Sorteos de las loterías de la Caixa Econômica Federal como herramientas MCP para Claude. Mega Sena, Lotofácil,
+Quina, Lotomania y Dupla Sena. Cada sorteo se obtiene de la API pública de Caixa,
+se le calcula su fingerprint y se firma con `signed-data.org`.
+
+**Especificación del dominio:** [lottery.brazil](/docs/spec/domains/lottery-brazil/)
+
+## Inicio rápido
+
+<Tabs>
+  <TabItem label="Local">
+
+```bash
+pip install signeddata-cds
+pip install signeddata-mcp-lottery
+signeddata-mcp-lottery
+```
+
+Luego en `~/.config/claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "signeddata-lottery": {
+      "command": "signeddata-mcp-lottery",
+      "env": {
+        "CDS_PRIVATE_KEY_PATH": "/path/to/keys/private.pem",
+        "CDS_PUBLIC_KEY_PATH":  "/path/to/keys/public.pem",
+        "CDS_ISSUER":           "signed-data.org"
+      }
+    }
+  }
+}
+```
+
+  </TabItem>
+  <TabItem label="Desde el código fuente">
+
+```bash
+git clone https://github.com/signed-data/cds.git && cd cds
+pip install -e sdk/python
+pip install -e mcp/lottery
+python mcp/lottery/server.py                          # stdio
+python mcp/lottery/server.py --transport sse --port 8001  # SSE
+```
+
+  </TabItem>
+</Tabs>
+
+## Herramientas
+
+| Herramienta | Descripción |
+|---|---|
+| `get_mega_sena_latest` | Último sorteo — números, premios, *acumulado* |
+| `get_mega_sena_by_concurso` | Sorteo específico por número |
+| `get_mega_sena_recent` | Últimos N sorteos (hasta 20) |
+| `check_mega_sena_ticket` | Comprueba si un conjunto de números fue ganador |
+| `get_mega_sena_statistics` | Análisis de frecuencia sobre los últimos N sorteos |
+
+## Recursos
+
+| URI | Descripción |
+|---|---|
+| `lottery://mega-sena/latest` | Último resultado como JSON |
+| `lottery://mega-sena/schema` | Tipo de contenido CDS + esquema del payload |
+
+## Juegos
+
+| Juego | Números | Sorteos | Tipo de contenido |
+|---|---|---|---|
+| Mega Sena | 6 de 1–60 | Mié, Sáb | `vocab/lottery-brazil/mega-sena-result` |
+| Lotofácil | 15 de 1–25 | Lun–Vie | `vocab/lottery-brazil/lotofacil-result` |
+| Quina | 5 de 1–80 | Lun–Vie | `vocab/lottery-brazil/quina-result` |
+| Lotomania | 20 de 100 | Lun, Mié, Vie | `vocab/lottery-brazil/lotomania-result` |
+| Dupla Sena | 2 × 6 de 1–50 | Lun, Vie | `vocab/lottery-brazil/dupla-sena-result` |
+
+## Fuente de datos
+
+API oficial de la Caixa Econômica Federal — no requiere autenticación.
+
+```
+GET https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/
+GET https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena/{concurso}
+```
+
+## Variables de entorno
+
+| Variable | Descripción | Predeterminado |
+|---|---|---|
+| `CDS_PRIVATE_KEY_PATH` | Ruta a la clave privada RSA para firmar | (sin firma si no se establece) |
+| `CDS_PUBLIC_KEY_PATH` | Ruta a la clave pública RSA para verificación | (omitir verificación) |
+| `CDS_ISSUER` | URI del emisor en eventos firmados | `signed-data.org` |
+
+<Aside type="tip">
+El servidor MCP solo obtiene datos de sorteos disponibles públicamente. La firma permite que un
+consumidor downstream verifique que los números que ve provienen de Caixa sin alteraciones.
+</Aside>

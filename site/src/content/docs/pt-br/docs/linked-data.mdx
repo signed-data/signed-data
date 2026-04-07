@@ -1,0 +1,293 @@
+---
+title: Linked Data
+description: Por que o CDS é Linked Data 5 estrelas e como ele implementa as quatro regras de Tim Berners-Lee.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+O CDS v0.2.0 trata todo evento, fonte e tipo de conteúdo como um recurso de primeira classe
+na web. Esta página explica por quê, como e o que isso traz para você.
+
+## Por que Linked Data
+
+Tim Berners-Lee propôs quatro regras para publicar dados na web:
+
+1. Use URIs como nomes para coisas.
+2. Use URIs HTTP para que as pessoas possam consultar esses nomes.
+3. Quando alguém consultar uma URI, forneça informações úteis (usando padrões).
+4. Inclua links para outras URIs para que possam descobrir mais coisas.
+
+**O problema da Torre de Babel.** Sistemas diferentes usam identificadores diferentes para
+as mesmas coisas. Uma API de loteria chama o jogo de `megasena`, outra de
+`mega-sena`, uma terceira usa um ID numérico opaco. Uma API de clima retorna `temp_c`,
+outra retorna `temperature_celsius`. Os conceitos são idênticos, mas os nomes
+não são, então combinar dados desses sistemas exige código de mapeamento escrito à mão
+para cada par.
+
+URIs resolvem isso. Quando dois sistemas se referem a
+`https://signed-data.org/vocab/lottery-brazil/mega-sena-result`, eles significam a
+mesma coisa — sem mapeamento necessário.
+
+Sem Linked Data, payloads JSON são silos isolados. Cada consumidor precisa
+saber de antemão o que cada campo significa e onde obter mais informações. Linked
+Data conecta esses silos: todo campo que referencia um conceito externo
+carrega uma URI dereferenciável que leva a uma definição, e essa definição
+encadeia para recursos relacionados.
+
+## Como o CDS implementa cada regra
+
+### Regra 1 — Use URIs como nomes para coisas
+
+O CDS atribui uma URI estável a toda entidade do sistema.
+
+| Entidade | Padrão de URI | Exemplo |
+|---|---|---|
+| Evento | `https://signed-data.org/events/{uuid}` | `.../events/a3f1c9e0-7b2d-4e8a-9f01-abc123def456` |
+| Fonte | `https://signed-data.org/sources/{source-id}` | `.../sources/caixa.gov.br.loterias.v1` |
+| Tipo de conteúdo | `https://signed-data.org/vocab/{domain}/{type}` | `.../vocab/lottery-brazil/mega-sena-result` |
+
+Essas URIs não são apenas identificadores opacos — são endereços que você pode buscar.
+
+### Regra 2 — Use URIs HTTP
+
+Todas as URIs CDS usam HTTPS e são servidas por `signed-data.org`. Sem schemes de URI
+customizados, sem URNs, sem namespaces proprietários. Qualquer cliente HTTP em qualquer plataforma
+pode resolvê-las.
+
+### Regra 3 — Forneça informação útil quando uma URI for consultada
+
+Toda URI CDS retorna um documento JSON-LD quando dereferenciada com um HTTP GET:
+
+```http
+GET /sources/caixa.gov.br.loterias.v1 HTTP/1.1
+Host: signed-data.org
+Accept: application/ld+json
+```
+
+```json
+{
+  "@context": "https://signed-data.org/contexts/cds/v1.jsonld",
+  "@id": "https://signed-data.org/sources/caixa.gov.br.loterias.v1",
+  "name": "Caixa Econômica Federal — Loterias API v1",
+  "url": "https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena",
+  "country": "BR",
+  "domains": ["lottery-brazil"]
+}
+```
+
+### Regra 4 — Inclua links para outras URIs
+
+Todo documento CDS contém links de saída:
+
+- Um **evento** referencia sua fonte via `source.@id`
+- O documento de **fonte** referencia seus domínios (ex.: `lottery-brazil`)
+- Os **domínios** referenciam o vocabulário, que define cada tipo de conteúdo e propriedade
+
+Isso cria um grafo navegável. Partindo de qualquer evento, você pode seguir os links
+para descobrir o que ele significa, de onde veio e quais outros dados a mesma
+fonte publica.
+
+## JSON-LD: por que não RDF/Turtle
+
+Ergonomia de desenvolvedor.
+
+JSON-LD é JSON válido. Um consumidor existente que lê JSON de um endpoint
+HTTP não precisa de um processador JSON-LD, não precisa aprender a sintaxe
+Turtle e não precisa instalar uma biblioteca RDF. O payload do evento parece
+JSON comum:
+
+```json
+{
+  "@context": "https://signed-data.org/contexts/cds/v1.jsonld",
+  "@id": "https://signed-data.org/events/a3f1c9e0-...",
+  "content_type": "https://signed-data.org/vocab/lottery-brazil/mega-sena-result",
+  "occurred_at": "2026-03-29T00:00:00Z",
+  "source": {
+    "@id": "https://signed-data.org/sources/caixa.gov.br.loterias.v1"
+  }
+}
+```
+
+O `@context` é uma única URL que mapeia chaves snake_case para predicados RDF
+completos nos bastidores. Por exemplo, `content_type` mapeia para
+`https://signed-data.org/vocab/cds#contentType` e `occurred_at` mapeia para
+`https://signed-data.org/vocab/cds#occurredAt`. Consumidores que não se importam
+com RDF ignoram `@context` totalmente e leem o JSON como está.
+
+Sem Turtle. Sem SPARQL necessário para uso básico. Se você precisar de RDF, qualquer processador JSON-LD
+expandirá o mesmo documento em N-Triples, Turtle ou RDF/XML.
+
+## A classificação 5 estrelas
+
+Tim Berners-Lee definiu um esquema de 5 estrelas para dados abertos. O CDS conquista todas as cinco.
+
+| Estrelas | Critério | Como o CDS atende |
+|---|---|---|
+| ★ | Disponível na web sob uma licença aberta | Todos os schemas, bibliotecas e ferramentas CDS são licenciados sob MIT. Eventos são publicados em URIs HTTPS. |
+| ★★ | Disponível como dados estruturados legíveis por máquina | Eventos são JSON — parseáveis por toda linguagem e plataforma. |
+| ★★★ | Disponível em um formato aberto não proprietário | JSON é um padrão aberto ECMA/IETF (RFC 8259), não um formato proprietário como Excel ou PDF. |
+| ★★★★ | Publicado usando padrões abertos do W3C | Todo evento carrega um `@context` JSON-LD. Campos mapeiam para predicados RDF do W3C. |
+| ★★★★★ | Tudo acima, mais links para outros dados | Eventos referenciam URIs de fontes, URIs de fontes referenciam vocabulários de domínio, URIs de vocabulário referenciam definições RDF. O grafo está conectado. |
+
+## Dereferenciando um evento CDS
+
+Pegue um evento da Mega Sena e siga os links passo a passo.
+
+**Passo 1 — Resolva o tipo de conteúdo.**
+
+O evento contém:
+
+```json
+"content_type": "https://signed-data.org/vocab/lottery-brazil/mega-sena-result"
+```
+
+Dereferencie:
+
+```http
+GET /vocab/lottery-brazil/mega-sena-result HTTP/1.1
+Host: signed-data.org
+```
+
+```json
+{
+  "@id": "https://signed-data.org/vocab/lottery-brazil/mega-sena-result",
+  "label": "Mega Sena draw result",
+  "description": "Official result of a Mega Sena lottery draw conducted by Caixa Econômica Federal.",
+  "domain": "lottery-brazil"
+}
+```
+
+Agora você sabe o que o evento representa.
+
+**Passo 2 — Resolva a fonte.**
+
+```http
+GET /sources/caixa.gov.br.loterias.v1 HTTP/1.1
+Host: signed-data.org
+```
+
+```json
+{
+  "@id": "https://signed-data.org/sources/caixa.gov.br.loterias.v1",
+  "name": "Caixa Econômica Federal — Loterias API v1",
+  "url": "https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena",
+  "country": "BR",
+  "license": "public-domain",
+  "domains": ["lottery-brazil"]
+}
+```
+
+Agora você sabe de onde os dados vieram e como alcançar a API upstream.
+
+**Passo 3 — Resolva o contexto.**
+
+```http
+GET /contexts/cds/v1.jsonld HTTP/1.1
+Host: signed-data.org
+```
+
+```json
+{
+  "@context": {
+    "cds": "https://signed-data.org/vocab/cds#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    "content_type": { "@id": "cds:contentType", "@type": "@id" },
+    "occurred_at":  { "@id": "cds:occurredAt",  "@type": "xsd:dateTime" },
+    "source":       { "@id": "cds:source",       "@type": "@id" },
+    "fingerprint":  { "@id": "cds:fingerprint" },
+    "payload":      { "@id": "cds:payload" }
+  }
+}
+```
+
+Agora você conhece o mapeamento RDF para cada campo.
+
+## Como eventos viram triplas RDF
+
+Um processador JSON-LD expande o evento compacto em um conjunto de triplas RDF aplicando
+o `@context`.
+
+**Evento compacto:**
+
+```json
+{
+  "@context": "https://signed-data.org/contexts/cds/v1.jsonld",
+  "@id": "https://signed-data.org/events/a3f1c9e0-7b2d-4e8a-9f01-abc123def456",
+  "content_type": "https://signed-data.org/vocab/lottery-brazil/mega-sena-result",
+  "occurred_at": "2026-03-29T00:00:00Z",
+  "source": {
+    "@id": "https://signed-data.org/sources/caixa.gov.br.loterias.v1"
+  }
+}
+```
+
+**Triplas expandidas:**
+
+| Sujeito | Predicado | Objeto |
+|---|---|---|
+| `<events/a3f1c9e0-...>` | `cds:contentType` | `<vocab/lottery-brazil/mega-sena-result>` |
+| `<events/a3f1c9e0-...>` | `cds:occurredAt` | `"2026-03-29T00:00:00Z"^^xsd:dateTime` |
+| `<events/a3f1c9e0-...>` | `cds:source` | `<sources/caixa.gov.br.loterias.v1>` |
+
+A forma compacta usa chaves snake_case amigáveis ao desenvolvedor; a forma expandida
+usa predicados RDF completos. Ambas as representações carregam a mesma semântica.
+
+## O registro de fontes
+
+O registro de fontes é a lista canônica de fontes de dados que o CDS reconhece.
+Cada entrada é um documento JSON-LD servido a partir de
+`https://signed-data.org/sources/{source-id}`.
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `name` | string | Nome legível por humanos da fonte |
+| `url` | string | URL base da API upstream |
+| `auth` | string | Método de autenticação (`none`, `api-key`, `oauth2`) |
+| `license` | string | Licença dos dados da fonte (`public-domain`, `cc-by-4.0`, etc.) |
+| `country` | string | Código de país ISO 3166-1 alpha-2 |
+| `domains` | string[] | Lista de identificadores de domínio (ex.: `["lottery-brazil"]`) |
+| `fingerprint_algorithm` | string | Algoritmo de hash para fingerprints da fonte (ex.: `sha256`) |
+| `certified_at` | string | Timestamp ISO 8601 quando a fonte foi certificada |
+| `certified_by` | string | Identificador da entidade que certificou a fonte |
+
+<Aside type="note">
+Por baixo dos panos, o CloudFront reescreve pontos no source ID para hifens no nome do
+arquivo S3. A requisição `GET /sources/caixa.gov.br.loterias.v1` resolve para
+`sources/caixa-gov-br-loterias-v1.json` no bucket subjacente. Isso evita
+problemas com pontos em paths de chaves S3 enquanto mantém a URI lógica limpa.
+</Aside>
+
+## Auto-hospedando vocabulário
+
+Se você roda seu próprio emissor CDS, não é obrigado a usar `signed-data.org`.
+Você pode publicar seu próprio vocabulário e definições de fontes em seu próprio domínio.
+Veja [Auto-hospedagem](/docs/self-hosting/) para o guia completo.
+
+## Futuro: SPARQL
+
+Como eventos CDS são JSON-LD válidos, são RDF válidos. Qualquer coleção de
+eventos pode ser carregada em um triple store (Apache Jena, Blazegraph, Amazon
+Neptune, Oxigraph) e consultada com SPARQL.
+
+```sparql
+PREFIX cds: <https://signed-data.org/vocab/cds#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+
+SELECT ?event ?contentType ?occurredAt
+WHERE {
+  ?event cds:contentType ?contentType ;
+         cds:occurredAt  ?occurredAt .
+
+  FILTER (
+    STRSTARTS(STR(?contentType), "https://signed-data.org/vocab/lottery-brazil/")
+    && ?occurredAt >= "2026-03-01T00:00:00Z"^^xsd:dateTime
+    && ?occurredAt <  "2026-04-01T00:00:00Z"^^xsd:dateTime
+  )
+}
+ORDER BY ?occurredAt
+```
+
+Esta não é uma funcionalidade que o CDS precisa construir — ela cai do modelo de dados
+de graça. O investimento em Linked Data se paga adiante: todo novo evento é
+imediatamente consultável junto a todo outro evento, através de fontes, domínios
+e intervalos de tempo, sem escrever nenhum código novo.

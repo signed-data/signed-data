@@ -1,0 +1,318 @@
+---
+title: Migração v0.1 → v0.2
+description: Como atualizar produtores e consumidores CDS existentes da v0.1 para a v0.2 (Linked Data).
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+Este guia cobre todas as mudanças incompatíveis introduzidas no CDS v0.2.0 e fornece
+exemplos concretos de migração para os SDKs Python e TypeScript.
+
+## 1. Mudanças incompatíveis
+
+| Campo | v0.1.0 | v0.2.0 | Mudança |
+|---|---|---|---|
+| `@context` | ausente | `"https://signed-data.org/contexts/cds/v1.jsonld"` | novo |
+| `@type` | ausente | `"https://signed-data.org/vocab/CuratedDataEvent"` | novo |
+| `@id` | ausente | `"https://signed-data.org/events/{uuid}"` | novo |
+| `spec_version` | `"0.1.0"` | `"0.2.0"` | atualizado |
+| `content_type` | objeto `CDSContentType` | string URI | **breaking** |
+| `source.id` | string opaca | ausente | **removido** |
+| `source.@id` | ausente | URI HTTP | **substitui** `source.id` |
+| `integrity.signed_by` | `"signed-data.org"` | `"https://signed-data.org"` | **breaking** |
+
+## 2. Migração do SDK Python
+
+### `content_type`: objeto → URI
+
+<Tabs>
+  <TabItem label="Antes (v0.1.0)">
+
+```python
+from cds.schema import CDSContentType
+
+content_type = CDSContentType(
+    domain="lottery.brazil",
+    schema_name="mega-sena.result",
+    version="1",
+    encoding="json",
+)
+event = CDSEvent(content_type=content_type, ...)
+```
+
+  </TabItem>
+  <TabItem label="Depois (v0.2.0)">
+
+```python
+from cds.vocab import CDSVocab
+
+event = CDSEvent(content_type=CDSVocab.LOTTERY_MEGA_SENA, ...)
+# content_type agora é uma string URI:
+# "https://signed-data.org/vocab/lottery-brazil/mega-sena-result"
+```
+
+  </TabItem>
+</Tabs>
+
+Se você lia o domínio ou schema do objeto de tipo de conteúdo, use as
+novas propriedades auxiliares:
+
+```python
+# Antes
+event.content_type.domain       # "lottery.brazil"
+event.content_type.schema_name  # "mega-sena.result"
+
+# Depois
+event.domain      # "lottery.brazil"    (computado a partir da URI)
+event.event_type  # "mega-sena.result"  (computado a partir da URI)
+```
+
+### `source`: `id` → `@id`
+
+<Tabs>
+  <TabItem label="Antes (v0.1.0)">
+
+```python
+from cds.schema import SourceMeta
+
+source = SourceMeta(id="caixa.gov.br.loterias.v1", fingerprint="sha256:...")
+```
+
+  </TabItem>
+  <TabItem label="Depois (v0.2.0)">
+
+```python
+from cds.schema import SourceMeta
+from cds.vocab import CDSSources
+
+source = SourceMeta(id=CDSSources.CAIXA_LOTERIAS, fingerprint="sha256:...")
+# Serializa para JSON como:
+# { "@id": "https://signed-data.org/sources/caixa.gov.br.loterias.v1",
+#   "fingerprint": "sha256:..." }
+```
+
+  </TabItem>
+</Tabs>
+
+No SDK Python, o construtor `SourceMeta` ainda usa `id=` como argumento de
+palavra-chave. O alias `@id` é aplicado durante a serialização JSON via
+`alias="@id"` do Pydantic.
+
+### Campo `context`: renomeado para `event_context`
+
+<Tabs>
+  <TabItem label="Antes (v0.1.0)">
+
+```python
+event.context.summary
+event.context.model
+```
+
+  </TabItem>
+  <TabItem label="Depois (v0.2.0)">
+
+```python
+event.event_context.summary
+event.event_context.model
+```
+
+  </TabItem>
+</Tabs>
+
+A chave JSON na saída serializada continua sendo `"context"` (via alias do Pydantic).
+O atributo Python foi renomeado para `event_context` para evitar sombrear internos
+do Pydantic. Se você lê de JSON/dict bruto, a chave continua sendo `"context"`.
+
+### `integrity.signed_by`: domínio puro → URI completa
+
+```python
+# Antes
+assert event.integrity.signed_by == "signed-data.org"
+
+# Depois
+assert event.integrity.signed_by == "https://signed-data.org"
+```
+
+### Exemplo Python completo
+
+```python
+from datetime import datetime, timezone
+from cds.schema import CDSEvent, SourceMeta, ContextMeta
+from cds.vocab import CDSVocab, CDSSources
+
+event = CDSEvent(
+    content_type  = CDSVocab.LOTTERY_MEGA_SENA,
+    source        = SourceMeta(id=CDSSources.CAIXA_LOTERIAS, fingerprint="sha256:b310..."),
+    occurred_at   = datetime.now(timezone.utc),
+    lang          = "pt-BR",
+    payload       = {"concurso": 2800, "dezenas": ["03", "17", "25", "38", "44", "55"]},
+    event_context = ContextMeta(summary="Mega Sena concurso 2800 resultado..."),
+)
+
+jsonld = event.to_jsonld()
+# jsonld["@context"] == "https://signed-data.org/contexts/cds/v1.jsonld"
+# jsonld["@type"]    == "https://signed-data.org/vocab/CuratedDataEvent"
+# jsonld["@id"]      == "https://signed-data.org/events/<uuid>"
+```
+
+## 3. Migração do SDK TypeScript
+
+### `content_type`: objeto → URI
+
+<Tabs>
+  <TabItem label="Antes (v0.1.0)">
+
+```typescript
+import { CDSContentType } from "@signeddata/cds-sdk";
+
+const contentType = new CDSContentType({
+  domain: "lottery.brazil",
+  schema_name: "mega-sena.result",
+  version: "1",
+  encoding: "json",
+});
+const event = new CDSEvent({ content_type: contentType });
+```
+
+  </TabItem>
+  <TabItem label="Depois (v0.2.0)">
+
+```typescript
+import { CDSEvent, CDSVocab } from "@signeddata/cds-sdk";
+
+const event = new CDSEvent({
+  content_type: CDSVocab.LOTTERY_MEGA_SENA,
+});
+```
+
+  </TabItem>
+</Tabs>
+
+`event.content_type` agora é uma `string` (era um objeto `CDSContentType`). Se você
+acessava `event.content_type.domain`, use o novo getter:
+
+```typescript
+event.domain      // "lottery.brazil"    (computado a partir da URI)
+event.event_type  // "mega-sena.result"  (computado a partir da URI)
+```
+
+### `source`: `id` → `@id`
+
+<Tabs>
+  <TabItem label="Antes (v0.1.0)">
+
+```typescript
+const source = { id: "caixa.gov.br.loterias.v1", fingerprint: "sha256:..." };
+```
+
+  </TabItem>
+  <TabItem label="Depois (v0.2.0)">
+
+```typescript
+import { CDSSources } from "@signeddata/cds-sdk";
+
+const source = {
+  "@id": CDSSources.CAIXA_LOTERIAS,
+  fingerprint: "sha256:...",
+};
+```
+
+  </TabItem>
+</Tabs>
+
+A interface `SourceMeta` agora usa `"@id"` em vez de `id`. Esta é uma mudança
+incompatível na forma do objeto.
+
+### `integrity.signed_by`: domínio puro → URI completa
+
+```typescript
+// Antes
+event.integrity.signed_by === "signed-data.org"
+
+// Depois
+event.integrity.signed_by === "https://signed-data.org"
+```
+
+### Exemplo TypeScript completo
+
+```typescript
+import { CDSEvent, CDSVocab, CDSSources } from "@signeddata/cds-sdk";
+
+const event = new CDSEvent({
+  content_type: CDSVocab.LOTTERY_MEGA_SENA,
+  source: {
+    "@id": CDSSources.CAIXA_LOTERIAS,
+    fingerprint: "sha256:b310...",
+  },
+  occurred_at: new Date(),
+  lang: "pt-BR",
+  payload: { concurso: 2800, dezenas: ["03", "17", "25", "38", "44", "55"] },
+  context: {
+    summary: "Mega Sena concurso 2800 resultado...",
+    model: "rule-based-v1",
+    generated_at: new Date().toISOString(),
+  },
+});
+
+const json = event.toJSON();
+// json["@context"] === "https://signed-data.org/contexts/cds/v1.jsonld"
+// json["@type"]    === "https://signed-data.org/vocab/CuratedDataEvent"
+// json["@id"]      === "https://signed-data.org/events/<uuid>"
+```
+
+## 4. Compatibilidade de assinatura
+
+<Aside type="caution" title="Verificação entre versões não é possível">
+**Eventos v0.1.0 não podem ser verificados por um verificador v0.2.0.** Os bytes canônicos
+usados para assinatura diferem entre as versões.
+</Aside>
+
+- **Bytes canônicos v0.1.0:** evento serializado em JSON excluindo `integrity` e
+  `ingested_at`. Não inclui `@context`, `@type` ou `@id` (esses campos
+  não existiam).
+- **Bytes canônicos v0.2.0:** evento serializado em JSON excluindo `integrity` e
+  `ingested_at`. **Inclui** `@context`, `@type` e `@id`.
+
+Como as representações de bytes canônicos diferem, uma assinatura produzida sob
+v0.1.0 não vai bater com os bytes canônicos calculados por um verificador v0.2.0. O
+hash será diferente e a verificação RSA-PSS falhará.
+
+Se você precisa verificar eventos v0.1.0 históricos, deve usar um verificador
+compatível com v0.1.0 que calcule bytes canônicos sem os campos `@context`, `@type` e
+`@id`.
+
+## 5. Validade dos eventos v0.1.0
+
+Eventos v0.1.0 permanecem válidos sob sua própria especificação. A especificação CDS v0.1.0
+não foi retirada nem descontinuada — ela simplesmente não suporta funcionalidades
+de Linked Data. Um evento v0.1.0 com `spec_version: "0.1.0"` ainda pode ser verificado
+usando as regras de bytes canônicos da v0.1.0 e o mesmo algoritmo RSA-PSS.
+
+Consumidores DEVERIAM verificar o campo `spec_version` para determinar qual
+computação de bytes canônicos usar durante a verificação:
+
+<Tabs>
+  <TabItem label="Python">
+
+```python
+if event_data["spec_version"] == "0.1.0":
+    # use bytes canônicos da v0.1.0 (sem @context/@type/@id)
+    pass
+elif event_data["spec_version"] == "0.2.0":
+    # use bytes canônicos da v0.2.0 (inclui @context/@type/@id)
+    pass
+```
+
+  </TabItem>
+  <TabItem label="TypeScript">
+
+```typescript
+if (eventData.spec_version === "0.1.0") {
+  // use bytes canônicos da v0.1.0 (sem @context/@type/@id)
+} else if (eventData.spec_version === "0.2.0") {
+  // use bytes canônicos da v0.2.0 (inclui @context/@type/@id)
+}
+```
+
+  </TabItem>
+</Tabs>

@@ -1,0 +1,62 @@
+---
+title: commodities.brazil
+description: Especificação de domínio para dados assinados de commodities brasileiras.
+---
+
+**Versão:** 1.0.0
+**URI do domínio:** `https://signed-data.org/vocab/commodities-brazil/`
+**Status:** Ativo
+
+## Visão geral
+
+O domínio `commodities.brazil` fornece feeds de dados certificados e assinados para os
+mercados brasileiros de commodities. As fontes incluem contratos futuros da B3 via Brapi,
+preços físicos de safras da CONAB e benchmarks internacionais do Banco
+Mundial.
+
+## Fontes de dados
+
+| Fonte | URI | Auth | Licença | Notas |
+|---|---|---|---|---|
+| Brapi (futuros B3) | `https://signed-data.org/sources/brapi.dev.v1` | nenhuma | MIT | Futuros em tempo real |
+| CONAB | `https://signed-data.org/sources/conab.gov.br.v1` | nenhuma | público | API não oficial; parsing defensivo necessário |
+| Banco Mundial | `https://signed-data.org/sources/api.worldbank.org.v2` | nenhuma | CC BY 4.0 | Benchmarks mensais |
+
+## Tipos de conteúdo
+
+| Schema | URI do tipo de conteúdo | Fonte | Cadência |
+|---|---|---|---|
+| `futures.soja` | `.../commodities-brazil/futures-soja` | B3 / Brapi | Tempo real |
+| `futures.milho` | `.../commodities-brazil/futures-milho` | B3 / Brapi | Tempo real |
+| `futures.boi-gordo` | `.../commodities-brazil/futures-boi-gordo` | B3 / Brapi | Tempo real |
+| `futures.cafe` | `.../commodities-brazil/futures-cafe` | B3 / Brapi | Tempo real |
+| `futures.acucar` | `.../commodities-brazil/futures-acucar` | B3 / Brapi | Tempo real |
+| `futures.etanol` | `.../commodities-brazil/futures-etanol` | B3 / Brapi | Tempo real |
+| `spot.soja` | `.../commodities-brazil/spot-soja` | CONAB | Semanal |
+| `spot.milho` | `.../commodities-brazil/spot-milho` | CONAB | Semanal |
+| `spot.trigo` | `.../commodities-brazil/spot-trigo` | CONAB | Semanal |
+| `spot.algodao` | `.../commodities-brazil/spot-algodao` | CONAB | Semanal |
+| `index.worldbank` | `.../commodities-brazil/index-worldbank` | Banco Mundial | Mensal |
+
+Todas as URIs têm o prefixo `https://signed-data.org/vocab/`.
+
+## Limitação da API CONAB
+
+O web service da CONAB não é uma API pública formal. É o backend da interface web
+deles. O ingestor usa parsing defensivo com um fallback `last_known_good`.
+Se a estrutura do endpoint mudar, o ingestor falha graciosamente e
+emite um alerta em vez de produzir dados corrompidos.
+
+## Exclusão da CEPEA
+
+Dados da CEPEA / Esalq são excluídos porque exigem scraping, o que viola o
+princípio do CDS: **sem scraping**. A CEPEA será adicionada se uma API apropriada for publicada.
+
+## Idioma
+
+Todos os eventos usam `lang: "pt-BR"`.
+
+## Página do produto
+
+Os dados assinados de `commodities.brazil` são expostos como ferramentas MCP em
+[commodities.mcp.signed-data.org](/products/commodities/).

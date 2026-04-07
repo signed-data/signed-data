@@ -1,0 +1,50 @@
+---
+title: Produtos
+description: Produtos curados de dados assinados em tempo real, construídos sobre o padrão CDS.
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+A SignedData publica um pequeno conjunto de produtos MCP focados que envolvem dados públicos
+brasileiros atrás de envelopes CDS assinados criptograficamente. Todo evento é assinado por
+`signed-data.org` e verificável independentemente com a [chave pública](https://signed-data.org/.well-known/cds-public-key.pem).
+
+<CardGrid>
+  <LinkCard
+    title="Finanças (Brasil)"
+    description="SELIC, CDI, IPCA, IGP-M, USD/BRL, EUR/BRL, ações da B3 e decisões de política monetária do Copom."
+    href="/products/finance/"
+  />
+  <LinkCard
+    title="Commodities (Brasil)"
+    description="Futuros agrícolas da B3 (soja, milho, boi gordo, café, açúcar), preços spot físicos da CONAB e basis."
+    href="/products/commodities/"
+  />
+  <LinkCard
+    title="Empresas (Brasil)"
+    description="Perfis CNPJ, registros de sócios (QSA) e consultas de atividade econômica CNAE via BrasilAPI."
+    href="/products/companies/"
+  />
+  <LinkCard
+    title="Loterias (Brasil)"
+    description="Sorteios da Mega Sena, Lotofácil, Quina, Lotomania e Dupla Sena da Caixa Econômica Federal."
+    href="/products/lottery/"
+  />
+</CardGrid>
+
+## Como eles se encaixam
+
+Os quatro produtos compartilham a mesma arquitetura:
+
+- **Padrão**: todo evento é um envelope JSON-LD [CDS v0.2.0](/docs/spec/v0-2-0/)
+- **Confiança**: todo evento é assinado em RSA-PSS SHA-256 por `signed-data.org`; consumidores verificam com a chave pública
+- **Transporte**: Streamable HTTP MCP, implantado em `{product}.mcp.signed-data.org`
+- **Código**: open-source em [`signed-data/cds`](https://github.com/signed-data/cds) sob MIT
+
+Para a arquitetura em tempo de execução, veja [Arquitetura](/docs/architecture/).
+
+## Relacionados
+
+- **[Notícias de futebol](https://github.com/signed-data/cds-mcp-soccer-brazil)** — um servidor MCP separado
+  que expõe notícias assinadas de futebol brasileiro e global. Ainda no envelope legado v0.1.0; migração
+  para Linked Data v0.2.0 pendente.

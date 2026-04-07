@@ -1,0 +1,140 @@
+---
+title: Auto-hospede um emissor
+description: Rode seu próprio emissor CDS localmente e publique sua chave pública.
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+Este tutorial te guia por rodar seu próprio emissor CDS de ponta a ponta na escala
+**mínima viável**: um script Python local que busca uma API real upstream,
+assina o resultado e imprime o envelope assinado. A partir daí você pode escalar
+para jobs cron agendados, armazenamentos de eventos baseados em S3 e implantações AWS — mas
+o modelo de confiança é idêntico em qualquer escala.
+
+## Por que auto-hospedar
+
+- **Você é dono da âncora de confiança.** Consumidores verificam com a *sua* chave pública, não a
+  da signed-data.org.
+- **Você controla a cadência de ingestão e a seleção de fontes.**
+- **Você pode estender o vocabulário** com domínios e tipos de conteúdo customizados.
+- **Sem vendor lock-in.** A assinatura vive dentro do evento e é portátil.
+
+## Pré-requisitos
+
+- Python 3.12+
+- 10 minutos
+- Um nome de domínio (para produção; não necessário para o passo a passo local)
+
+<Steps>
+
+1. **Instale o SDK e gere as chaves**
+
+   ```bash
+   pip install signeddata-cds
+
+   python3 -c "
+   from cds import generate_keypair
+   import os; os.makedirs('keys', exist_ok=True)
+   generate_keypair('keys/private.pem', 'keys/public.pem')
+   "
+   ```
+
+2. **Rode o ingestor de loterias com sua própria URI de emissor**
+
+   ```python
+   import asyncio
+   from cds import CDSSigner
+   from cds.sources.lottery import MegaSenaIngestor
+
+   signer   = CDSSigner("keys/private.pem", issuer="https://mycompany.example.com")
+   ingestor = MegaSenaIngestor(signer=signer)
+   events   = asyncio.run(ingestor.ingest())
+
+   for e in events:
+       print(e.context.summary)
+       print(f"  signed_by: {e.integrity.signed_by}")
+       print(f"  hash:      {e.integrity.hash[:32]}...")
+   ```
+
+   O evento assinado agora declara **você** como o emissor:
+
+   ```
+   "integrity": {
+     "signed_by": "https://mycompany.example.com",
+     ...
+   }
+   ```
+
+3. **Verifique com sua própria chave pública**
+
+   ```python
+   from cds import CDSVerifier
+
+   verifier = CDSVerifier("keys/public.pem")
+   verifier.verify(events[0])  # lança se adulterado
+   print("Válido")
+   ```
+
+4. **Publique sua chave pública (produção)**
+
+   Para que os consumidores verifiquem seus eventos sem troca de chaves fora de banda,
+   publique sua chave pública em:
+
+   ```
+   https://mycompany.example.com/.well-known/cds-public-key.pem
+   ```
+
+   Use qualquer host de arquivos estáticos: S3 + CloudFront, GitHub Pages, Cloudflare Pages,
+   nginx — qualquer coisa que sirva arquivos PEM sobre HTTPS.
+
+5. **(Opcional) Publique seu vocabulário**
+
+   Para conformidade total com Linked Data, sirva também:
+
+   ```
+   https://mycompany.example.com/vocab/          → cds.jsonld
+   https://mycompany.example.com/vocab/domains/  → arquivos de domínio
+   https://mycompany.example.com/sources/        → registro de fontes
+   https://mycompany.example.com/contexts/cds/v1.jsonld
+   ```
+
+   Defina `Content-Type: application/ld+json` para todos os arquivos `.jsonld`. Você pode
+   começar espelhando o vocabulário de referência de
+   `https://signed-data.org/vocab/` e adaptando-o às suas necessidades.
+
+</Steps>
+
+## O que permanece igual
+
+O formato do envelope, os tipos de conteúdo, o algoritmo de assinatura e as especificações de domínio são
+**idênticos** a `signed-data.org`. Seus eventos são verificáveis por qualquer consumidor CDS
+— eles apenas usam sua chave pública em vez da nossa. Veja
+[Auto-hospedagem](/docs/self-hosting/) para a referência completa.
+
+## O que muda
+
+| Propriedade | signed-data.org | Sua implantação |
+|---|---|---|
+| `integrity.signed_by` | `https://signed-data.org` | `https://mycompany.example.com` |
+| URL da chave pública | `signed-data.org/.well-known/...` | `mycompany.example.com/.well-known/...` |
+| Infraestrutura | Nossa conta AWS | Sua conta AWS / GCP / Azure |
+| Agenda do ingestor | Nossos crons | Seus crons |
+
+<Aside type="tip">
+A âncora de confiança é a **sua organização**, não signed-data.org. Você publica
+sua chave pública, seu vocabulário e seu registro de fontes; consumidores buscam
+esses recursos do seu domínio. O padrão CDS nunca assume um único
+emissor.
+</Aside>
+
+## Indo para produção
+
+Uma vez que o script local funcione, os próximos passos naturais são:
+
+1. **Agendar** o ingestor (cron, timer do systemd, GitHub Actions, AWS EventBridge)
+2. **Persistir** eventos no S3 (append-only, particionados por `domain/date/event_id`)
+3. **Gerenciar segredos** apropriadamente — mova a chave privada para o AWS Secrets Manager,
+   Azure Key Vault ou um HSM
+4. **Subir um servidor MCP** na frente do seu armazenamento de eventos para que LLMs possam consumir
+   os dados — veja o tutorial [Conecte o Claude a um servidor MCP](/docs/tutorials/claude-mcp-setup/)
+5. **Monitorar e alertar** sobre falhas de ingestão e divergências de assinatura

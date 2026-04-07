@@ -1,24 +1,30 @@
 ---
 title: SignedData
-description: Un estándar abierto para datos en tiempo real curados y firmados criptográficamente. CDS, SDKs y operadores de referencia.
+description: Un estándar abierto para Linked Data firmado criptográficamente, de 5 estrellas, con contexto LLM embebido. CDS, SDKs y operadores de referencia.
 template: splash
 hero:
   title: SignedData
-  tagline: Un estándar abierto para datos en tiempo real curados y firmados criptográficamente.
+  tagline: Un estándar abierto para Linked Data firmado criptográficamente, de 5 estrellas, con contexto LLM embebido.
   actions:
+    - text: Primeros pasos
+      link: /docs/getting-started/
+      icon: right-arrow
+      variant: primary
     - text: Ver en GitHub
       link: https://github.com/signed-data
       icon: external
-      variant: primary
+      variant: secondary
 ---
 
 ## Problema
 
 <div class="card-section">
 
-Cuando recibes un JSON de un feed de terceros, confías en el transporte, los
-intermediarios y la fuente al mismo tiempo. No hay prueba de que el payload sea
-exactamente lo que fue publicado, por quién ni cuándo.
+Los feeds de datos en tiempo real tienen una brecha de procedencia. Cuando llega un payload JSON,
+confías en el transporte, en los intermediarios y en la fuente todo a la vez. No hay prueba
+criptográfica de que los datos sean auténticos, no modificados o de quien dicen provenir. Al mismo tiempo,
+las identidades en los feeds son cadenas opacas — los LLMs necesitan datos que sean a la vez legibles
+por máquina *y* comprensibles para humanos.
 
 </div>
 
@@ -26,12 +32,15 @@ exactamente lo que fue publicado, por quién ni cuándo.
 
 <div class="card-section">
 
-**[cds](https://github.com/signed-data/cds)** — el
-**Curated Data Standard**: un sobre universal para datos en tiempo real
-(clima, deportes, lotería, noticias, …), firmado con RSA-PSS, con un resumen incorporado.
+**[CDS — Curated Data Standard](/docs/spec/v0-2-0/)** (Estándar de Datos Curados) — un envoltorio JSON-LD firmado universal
+para datos en tiempo real. Cada identidad es un URI HTTP dereferenciable; cada evento lleva un
+`context.summary` embebido para que los datos y el significado viajen juntos.
 
-**[mcp-lottery](https://github.com/signed-data/mcp-lottery)** —
-Servidor MCP que expone sorteos de la lotería brasileña como herramientas para Claude y otros agentes.
+**[SDKs](/docs/getting-started/)** en Python y TypeScript que producen, firman y
+verifican eventos CDS con RSA-PSS SHA-256 determinista.
+
+**[Servidores MCP](/products/)** que exponen datos firmados de finanzas, commodities, empresas
+y loterías brasileñas como herramientas para Claude y otros agentes.
 
 </div>
 
@@ -46,12 +55,29 @@ Servidor MCP que expone sorteos de la lotería brasileña como herramientas para
 
 </div>
 
+## Servidores MCP
+
+<div class="card-section">
+
+| Servidor                                     | Dominio                                    | Endpoint                              |
+| -------------------------------------------- | ------------------------------------------ | ------------------------------------- |
+| [Finanzas](/products/finance/)               | SELIC, IPCA, FX, cotizaciones B3, Copom    | `finance.mcp.signed-data.org`         |
+| [Commodities](/products/commodities/)        | Futuros agro B3, spot CONAB, spreads de base | `commodities.mcp.signed-data.org`   |
+| [Empresas](/products/companies/)             | Perfiles CNPJ y registros de socios        | `companies.mcp.signed-data.org`       |
+| [Loterías](/products/lottery/)               | Mega Sena, Lotofácil, Quina, …             | `pip install signeddata-mcp-lottery`  |
+| [Noticias de fútbol](https://github.com/signed-data/cds-mcp-soccer-brazil) † | Brasileirão, Libertadores, Premier League  | `mcp.signed-data.org` |
+
+<small>† Envoltorio legado v0.1.0 — pendiente de migración a Linked Data v0.2.0.</small>
+
+</div>
+
 ## Principios
 
 <div class="card-section">
 
-- **El estándar es el contrato.** CDS y SDKs son agnósticos de infraestructura; cualquiera puede operar ingestores y operadores.
-- **Procedencia, no solo TLS.** HTTPS protege el canal; las firmas anclan el payload.
+- **El estándar es el contrato.** CDS y los SDKs son agnósticos de la infraestructura; cualquiera puede operar ingestores y operadores.
+- **Procedencia, no solo TLS.** HTTPS asegura el canal; las firmas anclan el payload.
+- **Linked Data de 5 estrellas.** Identidades basadas en URI, envoltorios JSON-LD, todo dereferenciable.
 - **Listo para LLMs.** Los eventos incluyen un `context.summary` para que los datos y el significado viajen juntos.
 - **Curado.** Fuentes estructuradas, registradas y con fingerprint — sin scraping no verificado.
 
@@ -61,15 +87,18 @@ Servidor MCP que expone sorteos de la lotería brasileña como herramientas para
 
 <div class="card-section">
 
-| Dominio             | Enfoque                                         |
-| ------------------- | ----------------------------------------------- |
-| `weather`           | Pronósticos y condiciones actuales              |
-| `sports.football`   | Resultados, marcadores en vivo, clasificaciones |
-| `news`              | Titulares de editores verificados               |
-| `finance`           | Cotizaciones, precios, índices                  |
-| `religion.bible`    | Versículos y pasajes                            |
-| `government.brazil` | Diário Oficial, licitações                      |
-| `lottery.brazil`    | Sorteos de Caixa (Mega Sena, Lotofácil, …)      |
+| Dominio              | Enfoque                                            |
+| -------------------- | -------------------------------------------------- |
+| `weather`            | Pronósticos y condiciones actuales                 |
+| `sports.football`    | Resultados, marcadores en vivo, clasificaciones    |
+| `news`               | Titulares de editoriales verificadas               |
+| `finance`            | Cotizaciones, precios, índices                     |
+| `finance.brazil`     | SELIC, CDI, IPCA, FX, B3, Copom                    |
+| `commodities.brazil` | Futuros agro B3, spot CONAB, índices del Banco Mundial |
+| `companies.brazil`   | Perfiles CNPJ, socios (QSA) vía BrasilAPI          |
+| `religion.bible`     | Versículos y pasajes                               |
+| `government.brazil`  | Diário Oficial, licitações                         |
+| `lottery.brazil`     | Sorteos de Caixa (Mega Sena, Lotofácil, …)         |
 
 </div>
 

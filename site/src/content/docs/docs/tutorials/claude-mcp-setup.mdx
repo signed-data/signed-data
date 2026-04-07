@@ -1,0 +1,150 @@
+---
+title: Connect Claude to an MCP server
+description: Configure Claude Desktop to consume signed CDS data via MCP.
+---
+
+import { Steps, Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+This tutorial walks through giving Claude Desktop access to signed CDS data via
+the Model Context Protocol. We'll connect to the hosted finance and commodities
+servers, then optionally point Claude at a locally-running lottery server.
+
+## Prerequisites
+
+- [Claude Desktop](https://claude.ai/download) installed
+- The Claude Desktop config file location:
+  - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+  - **Linux:** `~/.config/claude/claude_desktop_config.json`
+  - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+## Hosted servers (zero install)
+
+The fastest path: point Claude at the deployed MCP endpoints. Nothing to
+install locally.
+
+<Steps>
+
+1. **Open your Claude Desktop config file**
+
+   Create it if it does not exist. The starting content is `{}`.
+
+2. **Add the hosted servers**
+
+   ```json
+   {
+     "mcpServers": {
+       "signeddata-finance": {
+         "url": "https://finance.mcp.signed-data.org/mcp"
+       },
+       "signeddata-commodities": {
+         "url": "https://commodities.mcp.signed-data.org/mcp"
+       },
+       "signeddata-companies": {
+         "url": "https://companies.mcp.signed-data.org/mcp"
+       }
+     }
+   }
+   ```
+
+3. **Restart Claude Desktop**
+
+   Close and reopen the app. The MCP servers connect on launch.
+
+4. **Test from a Claude conversation**
+
+   Try prompts like:
+
+   - "What is the current SELIC rate?"
+   - "Show me the latest soja futures from B3."
+   - "Look up CNPJ 33.000.167/0001-01."
+
+   Claude will call the appropriate signed tool and return the verified data.
+
+</Steps>
+
+## Local server (Python install)
+
+If you prefer to run the MCP server locally — for development, custom signing,
+or air-gapped environments — install the package and point Claude at the
+command.
+
+<Steps>
+
+1. **Install the SDK and an MCP server**
+
+   ```bash
+   pip install signeddata-cds
+   pip install signeddata-mcp-lottery
+   ```
+
+   Replace `mcp-lottery` with `mcp-finance`, `mcp-commodities`, or
+   `mcp-companies` for the others.
+
+2. **(Optional) Generate signing keys**
+
+   The hosted servers always sign. The local server signs only if you provide
+   keys.
+
+   ```bash
+   python3 -c "
+   from cds import generate_keypair
+   import os; os.makedirs('keys', exist_ok=True)
+   generate_keypair('keys/private.pem', 'keys/public.pem')
+   "
+   ```
+
+3. **Configure Claude Desktop**
+
+   ```json
+   {
+     "mcpServers": {
+       "signeddata-lottery": {
+         "command": "signeddata-mcp-lottery",
+         "env": {
+           "CDS_PRIVATE_KEY_PATH": "/absolute/path/to/keys/private.pem",
+           "CDS_PUBLIC_KEY_PATH":  "/absolute/path/to/keys/public.pem",
+           "CDS_ISSUER":           "https://myorg.example.com"
+         }
+       }
+     }
+   }
+   ```
+
+4. **Restart Claude Desktop and try it**
+
+   "What were the last five Mega Sena draws?"
+
+</Steps>
+
+## Mixing hosted and local
+
+You can combine both styles in one config file. Local servers are useful for
+prototyping new ingestors; hosted servers are useful for everything else.
+
+```json
+{
+  "mcpServers": {
+    "signeddata-finance":     { "url": "https://finance.mcp.signed-data.org/mcp" },
+    "signeddata-commodities": { "url": "https://commodities.mcp.signed-data.org/mcp" },
+    "signeddata-lottery": {
+      "command": "signeddata-mcp-lottery",
+      "env": { "CDS_ISSUER": "https://myorg.example.com" }
+    }
+  }
+}
+```
+
+<Aside type="tip">
+The hosted endpoints always sign with `signed-data.org`. Local servers default
+to unsigned (no `CDS_PRIVATE_KEY_PATH`) which is fine for development. For
+production, always sign — the integrity guarantee is the whole point of CDS.
+</Aside>
+
+## Verification on the consumer side
+
+Claude itself does not verify CDS signatures — it trusts the MCP server it
+connects to. If you need *end-to-end* verification (i.e., Claude's response
+contains a signed envelope you can re-verify), use the `cds_event_verify`
+helper tool exposed by some servers, or capture the MCP response in your own
+code and call `CDSVerifier.verify()` on it. See the
+[verify tutorial](/docs/tutorials/verify-event/).

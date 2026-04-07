@@ -1,0 +1,55 @@
+---
+title: finance.brazil
+description: Especificación del dominio para datos financieros brasileños firmados.
+---
+
+**Versión:** 1.0.0
+**URI del dominio:** `https://signed-data.org/vocab/finance-brazil/`
+**Estado:** Activo
+
+## Visión general
+
+El dominio `finance.brazil` proporciona feeds de datos certificados y firmados para los mercados
+financieros brasileños. Las fuentes de datos incluyen la API SGS del Banco Central do Brasil (BCB)
+para tasas oficiales, índices y datos FX, y Brapi para cotizaciones de acciones B3 y
+cripto.
+
+Todos los tipos de contenido en este dominio usan URIs de Linked Data de [CDS v0.2.0](/docs/spec/v0-2-0/).
+
+## Fuentes de datos
+
+| Fuente | URI | Auth | Licencia |
+|---|---|---|---|
+| Banco Central do Brasil — API SGS | `https://signed-data.org/sources/api.bcb.gov.br.v1` | ninguna | dominio público |
+| Brapi — B3 e finanças brasileiras | `https://signed-data.org/sources/brapi.dev.v1` | ninguna (free tier) | MIT |
+
+## Tipos de contenido
+
+| Esquema | URI del tipo de contenido | Fuente | Cadencia |
+|---|---|---|---|
+| `rate.selic` | `.../finance-brazil/rate-selic` | BCB SGS 11 | Diaria |
+| `rate.cdi` | `.../finance-brazil/rate-cdi` | BCB SGS 4391 | Diaria |
+| `index.ipca` | `.../finance-brazil/index-ipca` | BCB SGS 432+433 | Mensual |
+| `index.igpm` | `.../finance-brazil/index-igpm` | BCB SGS 189 | Mensual |
+| `fx.usd-brl` | `.../finance-brazil/fx-usd-brl` | BCB SGS 1+2 | Diaria |
+| `fx.eur-brl` | `.../finance-brazil/fx-eur-brl` | BCB SGS 21619 | Diaria |
+| `quote.stock` | `.../finance-brazil/quote-stock` | Brapi | Tiempo real |
+| `quote.fii` | `.../finance-brazil/quote-fii` | Brapi | Tiempo real |
+| `quote.crypto` | `.../finance-brazil/quote-crypto` | Brapi | Tiempo real |
+| `decision.copom` | `.../finance-brazil/decision-copom` | BCB | ~8 veces al año |
+
+Todos los URIs llevan el prefijo `https://signed-data.org/vocab/`.
+
+## Patrón del ingestor
+
+Dirigido por eventos con disparadores programados durante las horas de mercado. Las cotizaciones
+de acciones y cripto se obtienen bajo demanda por el servidor MCP (sin ingestor programado).
+
+## Idioma
+
+Todos los eventos usan `lang: "pt-BR"`.
+
+## Página del producto
+
+Los datos firmados de `finance.brazil` se exponen como herramientas MCP en
+[finance.mcp.signed-data.org](/products/finance/).

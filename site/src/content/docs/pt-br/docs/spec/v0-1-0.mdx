@@ -1,0 +1,116 @@
+---
+title: Especificação CDS v0.1.0
+description: A especificação original do Curated Data Standard.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**Status:** Rascunho (substituído por [v0.2.0](/docs/spec/v0-2-0/))
+**Emissor:** SignedData.Org
+**Licença:** MIT
+
+<Aside type="caution">
+A v0.1.0 foi **substituída** por [v0.2.0](/docs/spec/v0-2-0/), que converte
+identificadores em URIs dereferenciáveis e torna os eventos JSON-LD válidos. A v0.1.0 é
+preservada aqui para referência histórica e para consumidores que ainda precisam
+verificar eventos legados. Novas implantações devem usar v0.2.0.
+</Aside>
+
+## 1. Visão geral
+
+O Curated Data Standard (CDS) define um envelope universal para distribuir
+dados em tempo real de fontes verificadas. Todo evento CDS v0.1.0 é:
+
+- **Tipado** — carrega um `CDSContentType` codificando domínio, schema e versão como uma string MIME
+- **Assinado** — assinatura RSA-PSS SHA-256 pelo produtor, verificável por qualquer consumidor com a chave pública do emissor
+- **Fingerprintado** — SHA-256 da resposta bruta da API upstream, provando que os bytes da fonte não foram alterados
+- **Enriquecido** — `context.summary` opcional gerado por LLM no idioma declarado
+
+## 2. Envelope do evento
+
+```json
+{
+  "spec_version": "0.1.0",
+  "id":           "<uuid-v4>",
+  "content_type": {
+    "domain":      "<string>",
+    "schema_name": "<string>",
+    "version":     "<string>",
+    "encoding":    "json"
+  },
+  "source": {
+    "id":          "<source-id>",
+    "fingerprint": "sha256:<hex>"
+  },
+  "occurred_at":  "<iso8601>",
+  "ingested_at":  "<iso8601>",
+  "lang":         "<bcp47>",
+  "payload":      {},
+  "context": {
+    "summary":      "<string>",
+    "model":        "<string>",
+    "generated_at": "<iso8601>"
+  },
+  "integrity": {
+    "hash":      "sha256:<hex>",
+    "signature": "<base64-rsa-pss>",
+    "signed_by": "<issuer-id>"
+  }
+}
+```
+
+## 3. Tipo de conteúdo
+
+```
+application/vnd.cds.<domain>.<schema>+<encoding>;v=<version>
+```
+
+| Domínio | Exemplo de MIME |
+|---|---|
+| `weather` | `application/vnd.cds.weather.forecast-current+json;v=1` |
+| `sports.football` | `application/vnd.cds.sports-football.match-result+json;v=1` |
+| `news` | `application/vnd.cds.news.headline+json;v=1` |
+| `finance` | `application/vnd.cds.finance.quote-stock+json;v=1` |
+| `religion.bible` | `application/vnd.cds.religion-bible.verse+json;v=1` |
+| `government.brazil` | `application/vnd.cds.government-brazil.diario-oficial+json;v=1` |
+
+## 4. Algoritmo de assinatura
+
+1. Serialize para JSON canônico — `sort_keys=True`, UTF-8, excluindo `integrity` e `ingested_at`
+2. `hash = "sha256:" + SHA256(canonical_bytes).hexdigest()`
+3. Assine `canonical_bytes` com **RSA-PSS** (digest SHA-256, MGF1, tamanho de salt máximo)
+4. Codifique a assinatura como base64
+5. Anexe `IntegrityMeta { hash, signature, signed_by }`
+
+Verificação: re-serialize os bytes canônicos, verifique o hash, verifique a assinatura RSA-PSS
+com a chave pública do emissor publicada em
+`https://signed-data.org/.well-known/cds-public-key.pem`.
+
+## 5. Domínios registrados
+
+| Domínio | Descrição |
+|---|---|
+| `weather` | Condições climáticas e previsões |
+| `sports.football` | Partidas, classificações, estatísticas de jogadores |
+| `news` | Manchetes e artigos |
+| `finance` | Cotações, preços, índices de mercado |
+| `religion.bible` | Versículos e passagens bíblicas |
+| `government.brazil` | Dados do governo brasileiro |
+
+## 6. Conformidade do SDK
+
+Um SDK conforme DEVE:
+
+- Implementar `CDSEvent` com todos os campos obrigatórios
+- Implementar serialização canônica excluindo `integrity` e `ingested_at`
+- Suportar assinatura e verificação RSA-PSS SHA-256
+- Expor `CDSSigner`, `CDSVerifier` e `BaseIngestor`
+
+Implementações de referência:
+- Python: `pip install signeddata-cds`
+- TypeScript: `npm install @signeddata/cds-sdk`
+
+## 7. Versionamento
+
+`spec_version` usa semver. Mudanças incompatíveis incrementam a versão major.
+`content_type.version` versiona schemas de domínio independentemente.

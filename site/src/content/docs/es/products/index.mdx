@@ -1,0 +1,50 @@
+---
+title: Productos
+description: Productos de datos en tiempo real curados y firmados, construidos sobre el estándar CDS.
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+SignedData publica un pequeño conjunto de productos MCP enfocados que envuelven datos públicos
+brasileños detrás de envoltorios CDS firmados criptográficamente. Cada evento es firmado por
+`signed-data.org` y verificable de forma independiente con la [clave pública](https://signed-data.org/.well-known/cds-public-key.pem).
+
+<CardGrid>
+  <LinkCard
+    title="Finanzas (Brasil)"
+    description="SELIC, CDI, IPCA, IGP-M, USD/BRL, EUR/BRL, acciones B3 y decisiones de política monetaria del Copom."
+    href="/products/finance/"
+  />
+  <LinkCard
+    title="Commodities (Brasil)"
+    description="Futuros agro B3 (soja, milho, boi gordo, café, açúcar), precios spot físicos de CONAB y spreads de base."
+    href="/products/commodities/"
+  />
+  <LinkCard
+    title="Empresas (Brasil)"
+    description="Perfiles CNPJ, registros de socios (QSA) y consultas de actividad económica CNAE vía BrasilAPI."
+    href="/products/companies/"
+  />
+  <LinkCard
+    title="Loterías (Brasil)"
+    description="Sorteos de Mega Sena, Lotofácil, Quina, Lotomania y Dupla Sena de la Caixa Econômica Federal."
+    href="/products/lottery/"
+  />
+</CardGrid>
+
+## Cómo encajan entre sí
+
+Los cuatro productos comparten la misma arquitectura:
+
+- **Estándar**: cada evento es un envoltorio JSON-LD [CDS v0.2.0](/docs/spec/v0-2-0/)
+- **Confianza**: cada evento está firmado con RSA-PSS SHA-256 por `signed-data.org`; los consumidores verifican con la clave pública
+- **Transporte**: MCP HTTP Streamable, desplegado en `{product}.mcp.signed-data.org`
+- **Código**: open source en [`signed-data/cds`](https://github.com/signed-data/cds) bajo MIT
+
+Para la arquitectura en tiempo de ejecución, consulta [Arquitectura](/docs/architecture/).
+
+## Relacionado
+
+- **[Noticias de fútbol](https://github.com/signed-data/cds-mcp-soccer-brazil)** — un servidor MCP separado
+  que expone noticias firmadas de fútbol brasileño y global. Aún utiliza el envoltorio legado v0.1.0; pendiente
+  de migración a Linked Data v0.2.0.

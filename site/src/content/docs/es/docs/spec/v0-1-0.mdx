@@ -1,0 +1,116 @@
+---
+title: Especificación CDS v0.1.0
+description: La especificación original del Curated Data Standard.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**Estado:** Borrador (reemplazado por [v0.2.0](/docs/spec/v0-2-0/))
+**Emisor:** SignedData.Org
+**Licencia:** MIT
+
+<Aside type="caution">
+v0.1.0 ha sido **reemplazada** por [v0.2.0](/docs/spec/v0-2-0/), que convierte
+los identificadores a URIs dereferenciables y hace que los eventos sean JSON-LD válido. v0.1.0 se
+preserva aquí como referencia histórica y para los consumidores que aún necesitan
+verificar eventos legados. Los nuevos despliegues deberían usar v0.2.0.
+</Aside>
+
+## 1. Visión general
+
+El Curated Data Standard (CDS) define un envoltorio universal para distribuir
+datos en tiempo real desde fuentes verificadas. Cada evento CDS v0.1.0 es:
+
+- **Tipado** — lleva un `CDSContentType` que codifica dominio, esquema y versión como una cadena tipo MIME
+- **Firmado** — firma RSA-PSS SHA-256 por el productor, verificable por cualquier consumidor con la clave pública del emisor
+- **Con fingerprint** — SHA-256 de la respuesta API upstream cruda, probando que los bytes de la fuente no fueron alterados
+- **Enriquecido** — `context.summary` opcional generado por LLM en el idioma declarado
+
+## 2. Envoltorio del evento
+
+```json
+{
+  "spec_version": "0.1.0",
+  "id":           "<uuid-v4>",
+  "content_type": {
+    "domain":      "<string>",
+    "schema_name": "<string>",
+    "version":     "<string>",
+    "encoding":    "json"
+  },
+  "source": {
+    "id":          "<source-id>",
+    "fingerprint": "sha256:<hex>"
+  },
+  "occurred_at":  "<iso8601>",
+  "ingested_at":  "<iso8601>",
+  "lang":         "<bcp47>",
+  "payload":      {},
+  "context": {
+    "summary":      "<string>",
+    "model":        "<string>",
+    "generated_at": "<iso8601>"
+  },
+  "integrity": {
+    "hash":      "sha256:<hex>",
+    "signature": "<base64-rsa-pss>",
+    "signed_by": "<issuer-id>"
+  }
+}
+```
+
+## 3. Tipo de contenido
+
+```
+application/vnd.cds.<domain>.<schema>+<encoding>;v=<version>
+```
+
+| Dominio | Ejemplo MIME |
+|---|---|
+| `weather` | `application/vnd.cds.weather.forecast-current+json;v=1` |
+| `sports.football` | `application/vnd.cds.sports-football.match-result+json;v=1` |
+| `news` | `application/vnd.cds.news.headline+json;v=1` |
+| `finance` | `application/vnd.cds.finance.quote-stock+json;v=1` |
+| `religion.bible` | `application/vnd.cds.religion-bible.verse+json;v=1` |
+| `government.brazil` | `application/vnd.cds.government-brazil.diario-oficial+json;v=1` |
+
+## 4. Algoritmo de firma
+
+1. Serializar a JSON canónico — `sort_keys=True`, UTF-8, excluyendo `integrity` e `ingested_at`
+2. `hash = "sha256:" + SHA256(canonical_bytes).hexdigest()`
+3. Firmar `canonical_bytes` con **RSA-PSS** (digest SHA-256, MGF1, longitud máxima de salt)
+4. Codificar la firma como base64
+5. Adjuntar `IntegrityMeta { hash, signature, signed_by }`
+
+Verificación: re-serializar bytes canónicos, verificar el hash, verificar la firma RSA-PSS
+con la clave pública del emisor publicada en
+`https://signed-data.org/.well-known/cds-public-key.pem`.
+
+## 5. Dominios registrados
+
+| Dominio | Descripción |
+|---|---|
+| `weather` | Condiciones meteorológicas y pronósticos |
+| `sports.football` | Partidos de fútbol, clasificaciones, estadísticas de jugadores |
+| `news` | Titulares y artículos |
+| `finance` | Cotizaciones, precios, índices de mercado |
+| `religion.bible` | Versículos y pasajes de la Biblia |
+| `government.brazil` | Datos del gobierno brasileño |
+
+## 6. Conformidad del SDK
+
+Un SDK conforme DEBE:
+
+- Implementar `CDSEvent` con todos los campos requeridos
+- Implementar la serialización canónica excluyendo `integrity` e `ingested_at`
+- Soportar firma y verificación RSA-PSS SHA-256
+- Exponer `CDSSigner`, `CDSVerifier` y `BaseIngestor`
+
+Implementaciones de referencia:
+- Python: `pip install signeddata-cds`
+- TypeScript: `npm install @signeddata/cds-sdk`
+
+## 7. Versionado
+
+`spec_version` usa semver. Los cambios incompatibles incrementan la versión mayor.
+`content_type.version` versiona los esquemas de dominio de forma independiente.

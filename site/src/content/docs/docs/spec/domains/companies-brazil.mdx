@@ -1,0 +1,52 @@
+---
+title: companies.brazil
+description: Domain specification for signed Brazilian company lookups.
+---
+
+**Version:** 1.0.0
+**Domain URI:** `https://signed-data.org/vocab/companies-brazil/`
+**Status:** Active
+
+## Overview
+
+The `companies.brazil` domain provides certified, signed CNPJ company
+registration data from the Brazilian Receita Federal via BrasilAPI. This is a
+**query-driven** domain — data is fetched on demand per CNPJ lookup, not on a
+schedule.
+
+## Data sources
+
+| Source | URI | Auth | License |
+|---|---|---|---|
+| BrasilAPI | `https://signed-data.org/sources/brasilapi.com.br.v1` | none | MIT |
+
+## Content types
+
+| Schema | Content type URI | Source | Cadence |
+|---|---|---|---|
+| `profile.cnpj` | `.../companies-brazil/profile-cnpj` | BrasilAPI | On-demand |
+| `partners.cnpj` | `.../companies-brazil/partners-cnpj` | BrasilAPI | On-demand |
+| `cnae.profile` | `.../companies-brazil/cnae-profile` | BrasilAPI | Reference |
+
+All URIs are prefixed with `https://signed-data.org/vocab/`.
+
+## Ingestor pattern
+
+Query-driven. There is no scheduled ingestor. The MCP server fetches and signs
+CNPJ data on each request. The CDS signature proves that BrasilAPI returned
+this data at the query timestamp.
+
+## CNPJ validation
+
+All lookups validate the CNPJ check digits before making any API call. The
+Brazilian CNPJ has two check digits computed with a standard algorithm. Invalid
+CNPJs short-circuit with an error response and never reach BrasilAPI.
+
+## Language
+
+All events use `lang: "pt-BR"`.
+
+## Product page
+
+The signed `companies.brazil` data is exposed as MCP tools at
+[companies.mcp.signed-data.org](/products/companies/).

@@ -1,0 +1,150 @@
+---
+title: Conecte o Claude a um servidor MCP
+description: Configure o Claude Desktop para consumir dados CDS assinados via MCP.
+---
+
+import { Steps, Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Este tutorial te guia por dar ao Claude Desktop acesso a dados CDS assinados via
+o Model Context Protocol. Vamos conectar aos servidores hospedados de finanças e commodities
+e, opcionalmente, apontar o Claude para um servidor de loterias rodando localmente.
+
+## Pré-requisitos
+
+- [Claude Desktop](https://claude.ai/download) instalado
+- A localização do arquivo de configuração do Claude Desktop:
+  - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+  - **Linux:** `~/.config/claude/claude_desktop_config.json`
+  - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+## Servidores hospedados (sem instalação)
+
+O caminho mais rápido: aponte o Claude para os endpoints MCP implantados. Nada para
+instalar localmente.
+
+<Steps>
+
+1. **Abra seu arquivo de configuração do Claude Desktop**
+
+   Crie-o se ele não existir. O conteúdo inicial é `{}`.
+
+2. **Adicione os servidores hospedados**
+
+   ```json
+   {
+     "mcpServers": {
+       "signeddata-finance": {
+         "url": "https://finance.mcp.signed-data.org/mcp"
+       },
+       "signeddata-commodities": {
+         "url": "https://commodities.mcp.signed-data.org/mcp"
+       },
+       "signeddata-companies": {
+         "url": "https://companies.mcp.signed-data.org/mcp"
+       }
+     }
+   }
+   ```
+
+3. **Reinicie o Claude Desktop**
+
+   Feche e reabra o app. Os servidores MCP conectam na inicialização.
+
+4. **Teste a partir de uma conversa do Claude**
+
+   Tente prompts como:
+
+   - "Qual é a taxa SELIC atual?"
+   - "Mostre os últimos futuros de soja da B3."
+   - "Consulte o CNPJ 33.000.167/0001-01."
+
+   O Claude vai chamar a ferramenta assinada apropriada e retornar os dados verificados.
+
+</Steps>
+
+## Servidor local (instalação Python)
+
+Se você prefere rodar o servidor MCP localmente — para desenvolvimento, assinatura customizada
+ou ambientes air-gapped — instale o pacote e aponte o Claude para o
+comando.
+
+<Steps>
+
+1. **Instale o SDK e um servidor MCP**
+
+   ```bash
+   pip install signeddata-cds
+   pip install signeddata-mcp-lottery
+   ```
+
+   Substitua `mcp-lottery` por `mcp-finance`, `mcp-commodities` ou
+   `mcp-companies` para os outros.
+
+2. **(Opcional) Gere chaves de assinatura**
+
+   Os servidores hospedados sempre assinam. O servidor local só assina se você fornecer
+   chaves.
+
+   ```bash
+   python3 -c "
+   from cds import generate_keypair
+   import os; os.makedirs('keys', exist_ok=True)
+   generate_keypair('keys/private.pem', 'keys/public.pem')
+   "
+   ```
+
+3. **Configure o Claude Desktop**
+
+   ```json
+   {
+     "mcpServers": {
+       "signeddata-lottery": {
+         "command": "signeddata-mcp-lottery",
+         "env": {
+           "CDS_PRIVATE_KEY_PATH": "/absolute/path/to/keys/private.pem",
+           "CDS_PUBLIC_KEY_PATH":  "/absolute/path/to/keys/public.pem",
+           "CDS_ISSUER":           "https://myorg.example.com"
+         }
+       }
+     }
+   }
+   ```
+
+4. **Reinicie o Claude Desktop e experimente**
+
+   "Quais foram os últimos cinco sorteios da Mega Sena?"
+
+</Steps>
+
+## Misturando hospedado e local
+
+Você pode combinar ambos os estilos em um único arquivo de configuração. Servidores locais são úteis para
+prototipar novos ingestores; servidores hospedados são úteis para todo o resto.
+
+```json
+{
+  "mcpServers": {
+    "signeddata-finance":     { "url": "https://finance.mcp.signed-data.org/mcp" },
+    "signeddata-commodities": { "url": "https://commodities.mcp.signed-data.org/mcp" },
+    "signeddata-lottery": {
+      "command": "signeddata-mcp-lottery",
+      "env": { "CDS_ISSUER": "https://myorg.example.com" }
+    }
+  }
+}
+```
+
+<Aside type="tip">
+Os endpoints hospedados sempre assinam com `signed-data.org`. Servidores locais por padrão
+não assinam (sem `CDS_PRIVATE_KEY_PATH`), o que é aceitável para desenvolvimento. Para
+produção, sempre assine — a garantia de integridade é o ponto principal do CDS.
+</Aside>
+
+## Verificação no lado do consumidor
+
+O Claude em si não verifica assinaturas CDS — ele confia no servidor MCP ao qual
+se conecta. Se você precisa de verificação *ponta a ponta* (ou seja, a resposta do Claude
+contém um envelope assinado que você pode re-verificar), use a ferramenta auxiliar
+`cds_event_verify` exposta por alguns servidores, ou capture a resposta MCP em seu próprio
+código e chame `CDSVerifier.verify()` nela. Veja o
+[tutorial de verificação](/docs/tutorials/verify-event/).

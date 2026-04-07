@@ -1,0 +1,55 @@
+---
+title: finance.brazil
+description: Especificação de domínio para dados financeiros brasileiros assinados.
+---
+
+**Versão:** 1.0.0
+**URI do domínio:** `https://signed-data.org/vocab/finance-brazil/`
+**Status:** Ativo
+
+## Visão geral
+
+O domínio `finance.brazil` fornece feeds de dados certificados e assinados para os mercados
+financeiros brasileiros. As fontes de dados incluem a API SGS do Banco Central do Brasil
+(BCB) para taxas oficiais, índices e dados de FX, e a Brapi para cotações de ações
+e cripto da B3.
+
+Todos os tipos de conteúdo neste domínio usam URIs Linked Data do [CDS v0.2.0](/docs/spec/v0-2-0/).
+
+## Fontes de dados
+
+| Fonte | URI | Auth | Licença |
+|---|---|---|---|
+| Banco Central do Brasil — API SGS | `https://signed-data.org/sources/api.bcb.gov.br.v1` | nenhuma | domínio público |
+| Brapi — B3 e finanças brasileiras | `https://signed-data.org/sources/brapi.dev.v1` | nenhuma (free tier) | MIT |
+
+## Tipos de conteúdo
+
+| Schema | URI do tipo de conteúdo | Fonte | Cadência |
+|---|---|---|---|
+| `rate.selic` | `.../finance-brazil/rate-selic` | BCB SGS 11 | Diária |
+| `rate.cdi` | `.../finance-brazil/rate-cdi` | BCB SGS 4391 | Diária |
+| `index.ipca` | `.../finance-brazil/index-ipca` | BCB SGS 432+433 | Mensal |
+| `index.igpm` | `.../finance-brazil/index-igpm` | BCB SGS 189 | Mensal |
+| `fx.usd-brl` | `.../finance-brazil/fx-usd-brl` | BCB SGS 1+2 | Diária |
+| `fx.eur-brl` | `.../finance-brazil/fx-eur-brl` | BCB SGS 21619 | Diária |
+| `quote.stock` | `.../finance-brazil/quote-stock` | Brapi | Tempo real |
+| `quote.fii` | `.../finance-brazil/quote-fii` | Brapi | Tempo real |
+| `quote.crypto` | `.../finance-brazil/quote-crypto` | Brapi | Tempo real |
+| `decision.copom` | `.../finance-brazil/decision-copom` | BCB | ~8x por ano |
+
+Todas as URIs têm o prefixo `https://signed-data.org/vocab/`.
+
+## Padrão do ingestor
+
+Dirigido por eventos com gatilhos agendados durante o horário de mercado. Cotações de ações
+e cripto são buscadas sob demanda pelo servidor MCP (sem ingestor agendado).
+
+## Idioma
+
+Todos os eventos usam `lang: "pt-BR"`.
+
+## Página do produto
+
+Os dados assinados de `finance.brazil` são expostos como ferramentas MCP em
+[finance.mcp.signed-data.org](/products/finance/).

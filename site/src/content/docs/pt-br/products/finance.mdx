@@ -1,0 +1,136 @@
+---
+title: Finanças (Brasil)
+description: Dados financeiros brasileiros assinados — SELIC, IPCA, FX, cotações B3, decisões do Copom — como ferramentas MCP para Claude.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Dados financeiros brasileiros assinados e verificados como ferramentas MCP para Claude. SELIC, CDI, IPCA,
+IGP-M, USD/BRL, EUR/BRL, ações da B3 e decisões do Copom.
+
+**Endpoint:** `https://finance.mcp.signed-data.org/mcp`
+**Especificação do domínio:** [finance.brazil](/docs/spec/domains/finance-brazil/)
+
+## Início rápido
+
+<Tabs>
+  <TabItem label="Remoto (sem instalação)">
+
+Adicione à sua configuração do Claude Desktop (`~/.config/claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "signeddata-finance": {
+      "url": "https://finance.mcp.signed-data.org/mcp"
+    }
+  }
+}
+```
+
+Ou teste via curl:
+
+```bash
+curl -X POST https://finance.mcp.signed-data.org/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+  </TabItem>
+  <TabItem label="Local">
+
+```bash
+pip install signeddata-cds
+pip install "git+https://github.com/signed-data/cds.git#subdirectory=mcp/finance"
+signeddata-mcp-finance
+```
+
+Depois adicione ao Claude Desktop:
+
+```json
+{
+  "mcpServers": {
+    "signeddata-finance": {
+      "command": "signeddata-mcp-finance"
+    }
+  }
+}
+```
+
+  </TabItem>
+  <TabItem label="A partir do código-fonte">
+
+```bash
+git clone https://github.com/signed-data/cds.git && cd cds
+pip install -e sdk/python
+pip install -e mcp/finance
+signeddata-mcp-finance
+```
+
+  </TabItem>
+</Tabs>
+
+## Ferramentas
+
+| Ferramenta | Descrição |
+|---|---|
+| `get_selic_rate` | Taxa SELIC overnight (últimos N dias) |
+| `get_ipca` | Índice de preços ao consumidor IPCA (mensal + 12 meses) |
+| `get_igpm` | Índice geral de preços IGP-M |
+| `get_usd_brl` | Taxa de câmbio PTAX USD/BRL (compra/venda) |
+| `get_fx_rates` | USD/BRL + EUR/BRL de uma só vez |
+| `get_stock_quote` | Cotações de ações da B3 — até 10 tickers |
+| `get_market_summary` | SELIC + USD/BRL em uma única chamada |
+| `get_copom_history` | Últimas N decisões de política monetária do Copom |
+| `get_copom_latest` | Decisão mais recente do Copom |
+
+## Recursos
+
+| URI | Descrição |
+|---|---|
+| `finance://selic/latest` | Última taxa SELIC |
+| `finance://usd-brl/latest` | Última PTAX USD/BRL |
+| `finance://ipca/latest` | Último índice IPCA |
+| `finance://market-summary` | Resumo de mercado |
+
+## API HTTP
+
+O endpoint implantado também expõe ferramentas individuais como rotas HTTP para testes rápidos:
+
+```bash
+# Informações do serviço
+curl https://finance.mcp.signed-data.org/
+
+# Taxa SELIC
+curl https://finance.mcp.signed-data.org/tool/get_selic_rate
+
+# Cotação de ação
+curl "https://finance.mcp.signed-data.org/tool/get_stock_quote?tickers=PETR4,VALE3"
+
+# USD/BRL (últimos 5 dias)
+curl "https://finance.mcp.signed-data.org/tool/get_usd_brl?last_n=5"
+
+# Última decisão do Copom
+curl https://finance.mcp.signed-data.org/tool/get_copom_latest
+```
+
+## Fontes de dados
+
+| Fonte | URL | Auth |
+|---|---|---|
+| Banco Central do Brasil (SGS) | `api.bcb.gov.br` | Nenhuma (domínio público) |
+| Brapi (cotações B3) | `brapi.dev/api` | Nenhuma (free tier, 15 req/min) |
+| BCB Copom | `bcb.gov.br` | Nenhuma |
+
+## Variáveis de ambiente
+
+| Variável | Descrição | Padrão |
+|---|---|---|
+| `CDS_PRIVATE_KEY_PATH` | Caminho para a chave RSA privada de assinatura | (não assinado se não definido) |
+| `CDS_PUBLIC_KEY_PATH` | Caminho para a chave RSA pública de verificação | (pula verificação) |
+| `CDS_ISSUER` | URI do emissor nos eventos assinados | `signed-data.org` |
+
+<Aside type="note">
+Todos os dados são assinados criptograficamente por `signed-data.org` quando as chaves estão configuradas.
+O endpoint hospedado sempre assina.
+</Aside>

@@ -1,0 +1,201 @@
+---
+title: Primeros pasos
+description: Firma y verifica tu primer evento CDS en menos de diez minutos.
+---
+
+import { Steps, Tabs, TabItem, Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+Esta guía te lleva desde cero hasta una pipeline CDS en funcionamiento en menos de diez minutos.
+Instalarás el SDK, generarás un par de claves para firmar, construirás tu primer evento firmado
+y lo verificarás.
+
+## Prerrequisitos
+
+- Python 3.12+ **o** Node.js 20+
+- Cinco minutos
+
+<Steps>
+
+1. **Instala el SDK**
+
+   <Tabs>
+     <TabItem label="Python">
+   ```bash
+   pip install signeddata-cds
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```bash
+   npm install @signeddata/cds-sdk
+   ```
+     </TabItem>
+   </Tabs>
+
+2. **Genera un par de claves**
+
+   Cada productor CDS necesita un par de claves RSA-4096. Genera uno:
+
+   <Tabs>
+     <TabItem label="Python">
+   ```python
+   from cds import generate_keypair
+   import os
+
+   os.makedirs("keys", exist_ok=True)
+   generate_keypair("keys/private.pem", "keys/public.pem")
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```typescript
+   import { generateKeypair } from "@signeddata/cds-sdk";
+   import { mkdirSync } from "node:fs";
+
+   mkdirSync("keys", { recursive: true });
+   generateKeypair("keys/private.pem", "keys/public.pem");
+   ```
+     </TabItem>
+   </Tabs>
+
+   <Aside type="caution" title="Protege tu clave privada">
+   `keys/private.pem` es tu ancla de confianza. Añade `keys/` a `.gitignore` inmediatamente.
+   En producción, almacénala en AWS Secrets Manager, Azure Key Vault o un HSM.
+   </Aside>
+
+3. **Construye y firma tu primer evento**
+
+   <Tabs>
+     <TabItem label="Python">
+   ```python
+   from cds import CDSSigner, CDSEvent, SourceMeta, ContextMeta
+   from cds import CDSVocab, CDSSources
+   from datetime import datetime, timezone
+
+   signer = CDSSigner("keys/private.pem", issuer="https://myorg.example.com")
+
+   event = CDSEvent(
+       content_type  = CDSVocab.WEATHER_CURRENT,
+       source        = SourceMeta(id=CDSSources.OPEN_METEO),
+       occurred_at   = datetime.now(timezone.utc),
+       lang          = "en",
+       payload       = {
+           "location":    {"city": "London", "lat": 51.51, "lon": -0.13},
+           "temperature": {"current": 14.0, "feels_like": 12.0},
+           "condition":   "overcast",
+       },
+       event_context = ContextMeta(
+           summary = "London: overcast, 14C (feels 12C).",
+           model   = "rule-based-v1",
+       ),
+   )
+
+   signer.sign(event)
+   print(event.integrity.hash)       # sha256:...
+   print(event.integrity.signed_by)  # https://myorg.example.com
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```typescript
+   import { CDSEvent, CDSSigner, CDSVocab, CDSSources } from "@signeddata/cds-sdk";
+
+   const signer = new CDSSigner("keys/private.pem", "https://myorg.example.com");
+
+   const event = new CDSEvent({
+     content_type: CDSVocab.WEATHER_CURRENT,
+     source:       { "@id": CDSSources.OPEN_METEO },
+     occurred_at:  new Date(),
+     lang:         "en",
+     payload:      {
+       location:    { city: "London", lat: 51.51, lon: -0.13 },
+       temperature: { current: 14.0, feels_like: 12.0 },
+       condition:   "overcast",
+     },
+     context: {
+       summary:      "London: overcast, 14C (feels 12C).",
+       model:        "rule-based-v1",
+       generated_at: new Date().toISOString(),
+     },
+   });
+
+   signer.sign(event);
+   console.log(event.toJSON()); // JSON-LD con @context, @type, @id
+   ```
+     </TabItem>
+   </Tabs>
+
+4. **Verifica el evento**
+
+   El consumidor solo necesita tu clave **pública**.
+
+   ```python
+   from cds import CDSVerifier
+
+   verifier = CDSVerifier("keys/public.pem")
+   try:
+       verifier.verify(event)
+       print("Valid — data is authentic and unmodified")
+   except Exception as e:
+       print(f"Invalid — {e}")
+   ```
+
+   Modifica cualquier campo y verifica de nuevo — la firma será rechazada:
+
+   ```python
+   event.payload["temperature"]["current"] = 99.0  # ¡alteración!
+   verifier.verify(event)  # lanza: Hash mismatch
+   ```
+
+5. **Usa un ingestor incorporado**
+
+   CDS incluye ingestores para varios dominios. Manejan HTTP, parseo, fingerprinting
+   y firma automáticamente.
+
+   ```python
+   from cds import CDSSigner
+   from cds.sources.lottery import MegaSenaIngestor
+   import asyncio
+
+   signer   = CDSSigner("keys/private.pem", issuer="https://myorg.example.com")
+   ingestor = MegaSenaIngestor(signer=signer)
+   events   = asyncio.run(ingestor.ingest())  # último sorteo
+   print(events[0].event_context.summary)
+   # "Mega Sena concurso 2800 (29/03/2026): 04 · 12 · 25 · 36 · 47 · 59. ..."
+   ```
+
+6. **Conéctate a Claude vía MCP**
+
+   Para dar a Claude acceso a datos CDS firmados, instala uno de los servidores MCP:
+
+   ```bash
+   pip install signeddata-mcp-lottery
+   ```
+
+   Añádelo a tu configuración de Claude Desktop (`~/.config/claude/claude_desktop_config.json`):
+
+   ```json
+   {
+     "mcpServers": {
+       "lottery": {
+         "command": "signeddata-mcp-lottery",
+         "env": {
+           "CDS_PRIVATE_KEY_PATH": "/path/to/keys/private.pem",
+           "CDS_ISSUER": "https://myorg.example.com"
+         }
+       }
+     }
+   }
+   ```
+
+   Claude ahora puede llamar a `get_mega_sena_latest`, `check_mega_sena_ticket` y más.
+
+</Steps>
+
+## Próximos pasos
+
+<CardGrid>
+  <LinkCard title="Arquitectura" href="/docs/architecture/" description="Cómo encaja toda la pipeline" />
+  <LinkCard title="Linked Data" href="/docs/linked-data/" description="Por qué cada evento es JSON-LD válido" />
+  <LinkCard title="Firma" href="/docs/signing/" description="Los detalles criptográficos" />
+  <LinkCard title="Tipos de contenido" href="/docs/content-types/" description="El sistema de tipos basado en URI" />
+  <LinkCard title="Auto-alojamiento" href="/docs/self-hosting/" description="Ejecuta tu propia infraestructura" />
+  <LinkCard title="Especificación v0.2.0" href="/docs/spec/v0-2-0/" description="La especificación formal" />
+</CardGrid>

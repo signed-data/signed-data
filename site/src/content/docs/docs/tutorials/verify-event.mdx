@@ -1,0 +1,145 @@
+---
+title: Verify a CDS event
+description: Verify the signature of a CDS event with Python and TypeScript.
+---
+
+import { Steps, Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+This tutorial walks through verifying a CDS event you received from somewhere
+else — a file, an HTTP response, an MCP tool call. Verification is a **local**
+operation; it requires only the issuer's public key. No network call is needed
+once the public key is in hand.
+
+## Prerequisites
+
+- The event you want to verify (a JSON file or in-memory object)
+- The issuer's public key
+- The CDS SDK installed (`pip install signeddata-cds` or `npm install @signeddata/cds-sdk`)
+
+<Steps>
+
+1. **Obtain the issuer's public key**
+
+   The issuer publishes their public key at a well-known URL:
+
+   ```
+   https://{issuer}/.well-known/cds-public-key.pem
+   ```
+
+   For `signed-data.org`:
+
+   ```bash
+   curl -o signed-data-org.pub.pem \
+     https://signed-data.org/.well-known/cds-public-key.pem
+   ```
+
+   Save the file somewhere your code can read it.
+
+2. **Load the event**
+
+   <Tabs>
+     <TabItem label="Python">
+   ```python
+   import json
+
+   with open("event.json") as f:
+       event_data = json.load(f)
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```typescript
+   import { readFileSync } from "node:fs";
+
+   const eventData = JSON.parse(readFileSync("event.json", "utf-8"));
+   ```
+     </TabItem>
+   </Tabs>
+
+3. **Verify the signature**
+
+   <Tabs>
+     <TabItem label="Python">
+   ```python
+   from cds import CDSEvent, CDSVerifier
+
+   event    = CDSEvent.from_jsonld(event_data)
+   verifier = CDSVerifier("signed-data-org.pub.pem")
+
+   try:
+       verifier.verify(event)
+       print("Valid — data is authentic and unmodified")
+   except Exception as e:
+       print(f"Invalid — {e}")
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```typescript
+   import { CDSEvent, CDSVerifier } from "@signeddata/cds-sdk";
+
+   const event    = CDSEvent.fromJSON(eventData);
+   const verifier = new CDSVerifier("signed-data-org.pub.pem");
+
+   try {
+     verifier.verify(event);
+     console.log("Valid — data is authentic and unmodified");
+   } catch (e) {
+     console.log(`Invalid — ${(e as Error).message}`);
+   }
+   ```
+     </TabItem>
+   </Tabs>
+
+4. **Try tampering with the event**
+
+   Modify any field in the payload and verify again — the signature will be
+   rejected immediately:
+
+   ```python
+   event.payload["temperature"]["current"] = 99.0  # tamper!
+   verifier.verify(event)  # raises: Hash mismatch
+   ```
+
+   Any change to any field — including `payload`, `context.summary`, or
+   `source.fingerprint` — invalidates the signature. There is no way to
+   selectively re-sign part of an event.
+
+</Steps>
+
+## What verification proves
+
+A successful verification proves three things:
+
+1. **Authenticity** — the event was signed by the holder of the private key
+   matching this public key. If the issuer is `https://signed-data.org`, the
+   event was issued by signed-data.org.
+2. **Integrity** — the canonical bytes have not changed since signing. Every
+   field in the event is exactly as the issuer produced it.
+3. **Source assertion** — the issuer attests that the `payload` was derived
+   from the `source.@id` upstream API at `occurred_at`, and that the raw bytes
+   matched the SHA-256 in `source.fingerprint`.
+
+It does **not** prove that the upstream source was correct. The issuer signs
+*what it received* — not the underlying ground truth.
+
+<Aside type="tip" title="Multiple issuers">
+A consumer can hold many public keys and route verification by `signed_by`:
+
+```python
+KNOWN_ISSUERS = {
+    "https://signed-data.org":   CDSVerifier("signed-data-org.pub.pem"),
+    "https://mycompany.example.com": CDSVerifier("mycompany.pub.pem"),
+}
+
+verifier = KNOWN_ISSUERS.get(event.integrity.signed_by)
+if not verifier:
+    raise ValueError(f"Unknown issuer: {event.integrity.signed_by}")
+verifier.verify(event)
+```
+</Aside>
+
+## Cross-version verification
+
+v0.1.0 and v0.2.0 events use **different canonical byte rules**. A v0.1.0
+verifier cannot verify a v0.2.0 event, and vice versa. Always check
+`spec_version` first if you handle a mix of legacy and current events. See
+[Migration v0.1 → v0.2](/docs/spec/migration-v0-1-to-v0-2/) for details.

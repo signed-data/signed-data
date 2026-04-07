@@ -1,0 +1,50 @@
+---
+title: Products
+description: Curated, signed real-time data products built on the CDS standard.
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+SignedData publishes a small set of focused MCP products that wrap public Brazilian
+data behind cryptographically signed CDS envelopes. Every event is signed by
+`signed-data.org` and verifiable independently with the [public key](https://signed-data.org/.well-known/cds-public-key.pem).
+
+<CardGrid>
+  <LinkCard
+    title="Finance (Brazil)"
+    description="SELIC, CDI, IPCA, IGP-M, USD/BRL, EUR/BRL, B3 stocks, and Copom monetary-policy decisions."
+    href="/products/finance/"
+  />
+  <LinkCard
+    title="Commodities (Brazil)"
+    description="B3 agro futures (soja, milho, boi gordo, café, açúcar), CONAB physical spot prices, and basis spreads."
+    href="/products/commodities/"
+  />
+  <LinkCard
+    title="Companies (Brazil)"
+    description="CNPJ profiles, partner records (QSA), and CNAE economic-activity lookups via BrasilAPI."
+    href="/products/companies/"
+  />
+  <LinkCard
+    title="Lottery (Brazil)"
+    description="Mega Sena, Lotofácil, Quina, Lotomania, and Dupla Sena draws from Caixa Econômica Federal."
+    href="/products/lottery/"
+  />
+</CardGrid>
+
+## How they fit together
+
+All four products share the same architecture:
+
+- **Standard**: every event is a [CDS v0.2.0](/docs/spec/v0-2-0/) JSON-LD envelope
+- **Trust**: every event is RSA-PSS SHA-256 signed by `signed-data.org`; consumers verify with the public key
+- **Transport**: Streamable HTTP MCP, deployed at `{product}.mcp.signed-data.org`
+- **Code**: open-source in [`signed-data/cds`](https://github.com/signed-data/cds) under MIT
+
+For the runtime architecture, see [Architecture](/docs/architecture/).
+
+## Related
+
+- **[Soccer news](https://github.com/signed-data/cds-mcp-soccer-brazil)** — a separate MCP server
+  exposing signed Brazilian and global soccer news. Still on the legacy v0.1.0 envelope; pending
+  migration to v0.2.0 Linked Data.

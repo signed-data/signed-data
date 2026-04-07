@@ -1,0 +1,187 @@
+---
+title: Assinatura
+description: O esquema determinístico de assinatura RSA-PSS SHA-256 usado pelo CDS.
+---
+
+import { Aside, Tabs, TabItem } from '@astrojs/starlight/components';
+
+O CDS usa RSA-PSS com SHA-256. Esta página descreve o algoritmo por completo para que
+qualquer pessoa possa implementar um assinador ou verificador conforme sem ler o código-fonte do SDK.
+
+## Requisitos da chave
+
+| Propriedade | Valor |
+|---|---|
+| Algoritmo | RSA-PSS |
+| Tamanho da chave | 4096 bits no mínimo |
+| Hash | SHA-256 |
+| MGF | MGF1 com SHA-256 |
+| Tamanho do salt | Máximo (`PSS.MAX_LENGTH`) |
+| Formato da chave | PKCS#8 PEM (privada), SubjectPublicKeyInfo PEM (pública) |
+
+## Serialização canônica
+
+A entrada para a função de assinatura é o **JSON canônico** do evento.
+
+**Regras:**
+
+1. Serialize o evento como JSON com chaves ordenadas alfabeticamente (`sort_keys=True`)
+2. Codifique como bytes UTF-8 (sem BOM)
+3. **Exclua** o campo `integrity` por completo
+4. **Exclua** o campo `ingested_at` por completo
+5. Sem nova linha final, sem espaços em branco extras
+
+`ingested_at` é excluído porque é definido no momento da ingestão e pode diferir
+entre o produtor e uma re-ingestão. `integrity` é excluído porque
+contém a própria assinatura.
+
+<Tabs>
+  <TabItem label="Python">
+
+```python
+import json
+
+def canonical_bytes(event: CDSEvent) -> bytes:
+    data = event.model_dump(
+        exclude={"integrity", "ingested_at"},
+        mode="json",
+    )
+    return json.dumps(data, sort_keys=True, ensure_ascii=False).encode("utf-8")
+```
+
+  </TabItem>
+  <TabItem label="TypeScript">
+
+```typescript
+canonicalBytes(): Buffer {
+  const { integrity: _i, ingested_at: _ia, ...rest } = this.toJSON();
+  const sorted = Object.fromEntries(
+    Object.entries(rest).sort(([a], [b]) => a.localeCompare(b))
+  );
+  return Buffer.from(JSON.stringify(sorted), "utf-8");
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Assinatura (produtor)
+
+```python
+import hashlib, base64
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+
+canonical = event.canonical_bytes()
+
+# 1. Hash
+hash_hex = hashlib.sha256(canonical).hexdigest()
+payload_hash = f"sha256:{hash_hex}"
+
+# 2. Assinar
+raw_signature = private_key.sign(
+    canonical,
+    padding.PSS(
+        mgf=padding.MGF1(hashes.SHA256()),
+        salt_length=padding.PSS.MAX_LENGTH,
+    ),
+    hashes.SHA256(),
+)
+
+# 3. Anexar
+event.integrity = IntegrityMeta(
+    hash      = payload_hash,
+    signature = base64.b64encode(raw_signature).decode(),
+    signed_by = issuer,
+)
+```
+
+## Verificação (consumidor)
+
+```python
+import hashlib, base64
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+
+if not event.integrity:
+    raise ValueError("Event has no integrity metadata.")
+
+canonical = event.canonical_bytes()
+
+# 1. Verificar hash
+expected = "sha256:" + hashlib.sha256(canonical).hexdigest()
+if expected != event.integrity.hash:
+    raise ValueError(f"Hash mismatch. Expected {expected}, got {event.integrity.hash}")
+
+# 2. Verificar assinatura
+raw_signature = base64.b64decode(event.integrity.signature)
+public_key.verify(
+    raw_signature,
+    canonical,
+    padding.PSS(
+        mgf=padding.MGF1(hashes.SHA256()),
+        salt_length=padding.PSS.MAX_LENGTH,
+    ),
+    hashes.SHA256(),
+)
+# Lança cryptography.exceptions.InvalidSignature em caso de falha
+```
+
+## Por que RSA-PSS e não ECDSA ou Ed25519?
+
+O CDS escolheu RSA-4096 PSS por conservadorismo e compatibilidade:
+
+- **Ampla compatibilidade.** RSA-PSS é suportado nativamente em `cryptography` do Python,
+  `crypto` do Node.js, AWS KMS, Azure Key Vault e em todo HSM no mercado.
+- **Conformidade com FIPS.** Exigido por alguns consumidores corporativos.
+- **Sem política de seleção de curva.** A escolha de curva ECDSA (P-256 vs secp256k1) é
+  controversa. RSA evita isso.
+
+A contrapartida é o tamanho da chave (RSA 4096 bits → assinaturas de ~512 bytes vs 64 bytes para
+Ed25519). Para feeds de dados onde assinaturas são anexadas a eventos JSON, isso é
+aceitável.
+
+Uma futura revisão da especificação pode adicionar Ed25519 como algoritmo opcional. RSA-PSS
+SHA-256 permanecerá o mínimo exigido.
+
+## Campos dos metadados de integridade
+
+```json
+{
+  "hash":      "sha256:a1b2c3d4...",
+  "signature": "MX6rj3qK...",
+  "signed_by": "signed-data.org"
+}
+```
+
+| Campo | Descrição |
+|---|---|
+| `hash` | `"sha256:" + hex(SHA256(canonical_bytes))` |
+| `signature` | `base64(RSA-PSS-sign(canonical_bytes, private_key))` |
+| `signed_by` | Identificador do emissor — tipicamente um nome de domínio |
+
+O campo `hash` é redundante com a assinatura (uma assinatura válida implica que
+o hash está correto), mas é incluído para rejeição rápida antes da verificação da
+assinatura, que é computacionalmente cara.
+
+## Distribuição de chaves
+
+O emissor **DEVERIA** publicar sua chave pública em:
+
+```
+https://{issuer}/.well-known/cds-public-key.pem
+```
+
+Para `signed-data.org`:
+
+```
+https://signed-data.org/.well-known/cds-public-key.pem
+```
+
+Isso segue a mesma convenção de DKIM, ACME e outros schemes de URI well-known.
+
+<Aside type="caution" title="Detecção de adulteração">
+Qualquer modificação em qualquer campo — incluindo `context.summary`, `payload` ou
+`source.fingerprint` — invalida a assinatura. Não há como re-assinar seletivamente
+parte de um evento.
+</Aside>

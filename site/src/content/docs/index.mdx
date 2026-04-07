@@ -1,24 +1,30 @@
 ---
 title: SignedData
-description: An open standard for curated, cryptographically signed, real-time data. CDS, SDKs, and reference operators.
+description: An open standard for cryptographically signed, 5-star Linked Data with embedded LLM context. CDS, SDKs, and reference operators.
 template: splash
 hero:
   title: SignedData
-  tagline: An open standard for curated, cryptographically signed, real-time data.
+  tagline: An open standard for cryptographically signed, 5-star Linked Data with embedded LLM context.
   actions:
+    - text: Get started
+      link: /docs/getting-started/
+      icon: right-arrow
+      variant: primary
     - text: View on GitHub
       link: https://github.com/signed-data
       icon: external
-      variant: primary
+      variant: secondary
 ---
 
 ## Problem
 
 <div class="card-section">
 
-When you receive JSON from a third-party feed, you trust the transport, intermediaries,
-and source at once. There is no proof that the payload is exactly what was published,
-by whom, or when.
+Real-time data feeds have a provenance gap. When a JSON payload arrives, you trust the
+transport, the intermediaries, and the source all at once. There is no cryptographic proof
+the data is authentic, unmodified, or from who it claims to be from. At the same time,
+identities in feeds are opaque strings — LLMs need data that is both machine-readable
+*and* human-understandable.
 
 </div>
 
@@ -26,12 +32,15 @@ by whom, or when.
 
 <div class="card-section">
 
-**[cds](https://github.com/signed-data/cds)** — the
-**Curated Data Standard**: a universal envelope for real-time data
-(weather, sports, lottery, news, …), signed with RSA-PSS, with an embedded summary.
+**[CDS — Curated Data Standard](/docs/spec/v0-2-0/)** — a universal signed JSON-LD envelope
+for real-time data. Every identity is a dereferenceable HTTP URI; every event carries an
+embedded `context.summary` so data and meaning travel together.
 
-**[mcp-lottery](https://github.com/signed-data/mcp-lottery)** —
-MCP server exposing Brazilian lottery draws as tools for Claude and other agents.
+**[SDKs](/docs/getting-started/)** in Python and TypeScript that produce, sign, and
+verify CDS events with deterministic RSA-PSS SHA-256.
+
+**[MCP servers](/products/)** that expose signed Brazilian finance, commodities, companies,
+and lottery data as tools for Claude and other agents.
 
 </div>
 
@@ -46,12 +55,29 @@ MCP server exposing Brazilian lottery draws as tools for Claude and other agents
 
 </div>
 
+## MCP servers
+
+<div class="card-section">
+
+| Server                                       | Domain                                     | Endpoint                              |
+| -------------------------------------------- | ------------------------------------------ | ------------------------------------- |
+| [Finance](/products/finance/)                | SELIC, IPCA, FX, B3 quotes, Copom          | `finance.mcp.signed-data.org`         |
+| [Commodities](/products/commodities/)        | B3 agro futures, CONAB spot, basis spreads | `commodities.mcp.signed-data.org`     |
+| [Companies](/products/companies/)            | CNPJ profiles and partner records          | `companies.mcp.signed-data.org`       |
+| [Lottery](/products/lottery/)                | Mega Sena, Lotofácil, Quina, …             | `pip install signeddata-mcp-lottery`  |
+| [Soccer news](https://github.com/signed-data/cds-mcp-soccer-brazil) † | Brasileirão, Libertadores, Premier League  | `mcp.signed-data.org` |
+
+<small>† Legacy v0.1.0 envelope — pending migration to v0.2.0 Linked Data.</small>
+
+</div>
+
 ## Principles
 
 <div class="card-section">
 
 - **Standard is the contract.** CDS and SDKs are infrastructure-agnostic; anyone can run ingestors and operators.
 - **Provenance, not only TLS.** HTTPS secures the channel; signatures anchor the payload.
+- **5-star Linked Data.** URI-based identities, JSON-LD envelopes, dereferenceable everything.
 - **LLM-ready.** Events include a `context.summary` so data and meaning travel together.
 - **Curated.** Structured sources, registered and fingerprinted — no unverified scraping.
 
@@ -61,15 +87,18 @@ MCP server exposing Brazilian lottery draws as tools for Claude and other agents
 
 <div class="card-section">
 
-| Domain              | Focus                                 |
-| ------------------- | ------------------------------------- |
-| `weather`           | Forecasts and current conditions      |
-| `sports.football`   | Results, live scores, standings       |
-| `news`              | Headlines from verified publishers    |
-| `finance`           | Quotes, prices, indices               |
-| `religion.bible`    | Verses and passages                   |
-| `government.brazil` | Diário Oficial, licitações            |
-| `lottery.brazil`    | Caixa draws (Mega Sena, Lotofácil, …) |
+| Domain               | Focus                                              |
+| -------------------- | -------------------------------------------------- |
+| `weather`            | Forecasts and current conditions                   |
+| `sports.football`    | Results, live scores, standings                    |
+| `news`               | Headlines from verified publishers                 |
+| `finance`            | Quotes, prices, indices                            |
+| `finance.brazil`     | SELIC, CDI, IPCA, FX, B3, Copom                    |
+| `commodities.brazil` | B3 agro futures, CONAB spot, World Bank indices    |
+| `companies.brazil`   | CNPJ profiles, partners (QSA) via BrasilAPI        |
+| `religion.bible`     | Verses and passages                                |
+| `government.brazil`  | Diário Oficial, licitações                         |
+| `lottery.brazil`     | Caixa draws (Mega Sena, Lotofácil, …)              |
 
 </div>
 

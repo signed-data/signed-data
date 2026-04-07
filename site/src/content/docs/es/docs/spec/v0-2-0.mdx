@@ -1,0 +1,327 @@
+---
+title: Especificación CDS v0.2.0
+description: La especificación de Linked Data del Curated Data Standard, versión 0.2.0.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+**Estado:** Borrador
+**Emisor:** SignedData.Org
+**Licencia:** MIT
+**Reemplaza a:** CDS v0.1.0
+
+## 1. Visión general
+
+El Curated Data Standard (CDS) es un estándar abierto para distribuir datos curados,
+firmados criptográficamente y en tiempo real desde fuentes verificadas. La versión 0.2.0
+convierte todas las identidades — eventos, fuentes, tipos de contenido — a URIs HTTP
+dereferenciables, haciendo que cada evento CDS sea JSON-LD válido. Con este cambio, cada
+evento CDS se convierte en Linked Data de 5 estrellas: legible por máquina, con licencia abierta, estructurado
+en un formato no propietario, descrito usando estándares del W3C y enlazado a los datos
+de otras personas vía URIs.
+
+Las propiedades clave de un evento CDS permanecen sin cambios:
+
+- **Tipado** — lleva un URI `content_type` que identifica el dominio y el esquema
+- **Firmado** — firma RSA-PSS SHA-256 por el productor, verificable por cualquier consumidor
+- **Con fingerprint** — SHA-256 de la respuesta API upstream cruda, probando que los bytes de la fuente no fueron alterados
+- **Enriquecido** — `context.summary` opcional generado por LLM en el idioma declarado
+- **Enlazado** — cada entidad es un URI HTTP dereferenciable que devuelve JSON-LD (NUEVO en v0.2.0)
+
+## 2. Principios de Linked Data
+
+CDS v0.2.0 está diseñado para satisfacer las cuatro reglas de Linked Data articuladas por Tim Berners-Lee.
+
+**Regla 1: Usa URIs como nombres para las cosas.** CDS nombra cada entidad con un URI.
+Los eventos se identifican por `https://signed-data.org/events/{uuid}`, los tipos de contenido
+por `https://signed-data.org/vocab/{domain}/{schema}` y las fuentes por
+`https://signed-data.org/sources/{source-id}`.
+
+**Regla 2: Usa URIs HTTP para que las personas puedan buscar esos nombres.** Todos los URIs CDS usan
+la base `https://signed-data.org`. No son identificadores opacos — son
+URIs HTTPS que se resuelven a endpoints reales en la web.
+
+**Regla 3: Cuando alguien busca un URI, proporciona información útil usando
+estándares.** Cada URI CDS devuelve un documento JSON-LD. Los URIs de fuentes devuelven
+metadatos de la fuente; los URIs de tipos de contenido devuelven definiciones de esquema; la raíz
+del vocabulario devuelve la ontología completa.
+
+**Regla 4: Incluye enlaces a otros URIs.** Los eventos CDS contienen enlaces a otros
+recursos CDS — eventos a fuentes a dominios a vocabulario, formando un grafo
+navegable.
+
+Consulta [Linked Data](/docs/linked-data/) para la inmersión completa.
+
+## 3. Calificación de datos abiertos de 5 estrellas
+
+CDS v0.2.0 alcanza la calificación máxima de datos abiertos de 5 estrellas:
+
+```
+★       Available online under an open license              ✓ (v0.1.0)
+★★      Structured data (not a scanned image)               ✓ (v0.1.0)
+★★★     Non-proprietary format (JSON)                       ✓ (v0.1.0)
+★★★★    Use open W3C standards (JSON-LD)                    ✓ NEW in v0.2.0
+★★★★★   Link to other people's data (URI links)             ✓ NEW in v0.2.0
+```
+
+## 4. Envoltorio del evento
+
+Cada evento CDS v0.2.0 es un documento JSON-LD válido:
+
+```json
+{
+  "@context": "https://signed-data.org/contexts/cds/v1.jsonld",
+  "@type":    "https://signed-data.org/vocab/CuratedDataEvent",
+  "@id":      "https://signed-data.org/events/a3f8c2d1-4e2b-4f8a-9c1d-2e3f4a5b6c7d",
+
+  "spec_version": "0.2.0",
+  "id":           "a3f8c2d1-4e2b-4f8a-9c1d-2e3f4a5b6c7d",
+
+  "content_type": "https://signed-data.org/vocab/lottery-brazil/mega-sena-result",
+
+  "source": {
+    "@id":         "https://signed-data.org/sources/caixa.gov.br.loterias.v1",
+    "fingerprint": "sha256:b310..."
+  },
+
+  "occurred_at":  "2026-03-29T00:00:00Z",
+  "ingested_at":  "2026-03-29T00:00:04Z",
+  "lang":         "pt-BR",
+  "payload":      { },
+
+  "context": {
+    "summary":      "Mega Sena concurso 2800...",
+    "model":        "rule-based-v1",
+    "generated_at": "2026-03-29T00:00:05Z"
+  },
+
+  "integrity": {
+    "hash":      "sha256:a1b2c3...",
+    "signature": "MX6rj3...",
+    "signed_by": "https://signed-data.org"
+  }
+}
+```
+
+Los campos `@context`, `@type` y `@id` **DEBEN** aparecer primero en la salida
+serializada. El campo `id` (UUID simple) se mantiene junto a `@id` (URI completo) por
+conveniencia.
+
+## 5. Referencia de campos
+
+| Campo | v0.1.0 | v0.2.0 | Cambio |
+|---|---|---|---|
+| `@context` | ausente | `"https://signed-data.org/contexts/cds/v1.jsonld"` | nuevo |
+| `@type` | ausente | `"https://signed-data.org/vocab/CuratedDataEvent"` | nuevo |
+| `@id` | ausente | `"https://signed-data.org/events/{uuid}"` | nuevo |
+| `spec_version` | `"0.1.0"` | `"0.2.0"` | actualizado |
+| `content_type` | objeto `CDSContentType` | cadena URI | **breaking** |
+| `source.id` | cadena opaca | ausente | **eliminado** |
+| `source.@id` | ausente | URI HTTP | **reemplaza** a `source.id` |
+| `integrity.signed_by` | `"signed-data.org"` | `"https://signed-data.org"` | **breaking** |
+
+## 6. Esquema URI
+
+Todos los URIs CDS comparten la base `https://signed-data.org`.
+
+| Recurso | Patrón | Ejemplo |
+|---|---|---|
+| Evento | `/events/{uuid}` | `https://signed-data.org/events/a3f8c2d1-...` |
+| Tipo de contenido | `/vocab/{domain-slug}/{schema-slug}` | `.../vocab/lottery-brazil/mega-sena-result` |
+| Fuente | `/sources/{source-id}` | `.../sources/caixa.gov.br.loterias.v1` |
+| Raíz del vocabulario | `/vocab/` | `https://signed-data.org/vocab/` |
+| Contexto JSON-LD | `/contexts/cds/v1.jsonld` | `.../contexts/cds/v1.jsonld` |
+| Clave pública | `/.well-known/cds-public-key.pem` | `.../cds-public-key.pem` |
+
+**Slugs de dominio**: los puntos en el nombre del dominio se convierten en guiones. `lottery.brazil` →
+`lottery-brazil`. `sports.football` → `sports-football`.
+
+**Slugs de esquema**: los puntos en el nombre del esquema se convierten en guiones. `mega-sena.result` →
+`mega-sena-result`.
+
+**IDs de fuentes**: los puntos se mantienen tal cual. `caixa.gov.br.loterias.v1` permanece
+`caixa.gov.br.loterias.v1`.
+
+## 7. URIs de tipos de contenido
+
+```
+https://signed-data.org/vocab/{domain-slug}/{schema-slug}
+```
+
+La firma de la función constructora es `content_type_uri(domain, schema_name)` —
+ambos argumentos usan la notación de puntos original.
+
+### Tipos de contenido registrados
+
+#### lottery-brazil
+
+| Constante | URI |
+|---|---|
+| `LOTTERY_MEGA_SENA` | `.../vocab/lottery-brazil/mega-sena-result` |
+| `LOTTERY_LOTOFACIL` | `.../vocab/lottery-brazil/lotofacil-result` |
+| `LOTTERY_QUINA` | `.../vocab/lottery-brazil/quina-result` |
+| `LOTTERY_LOTOMANIA` | `.../vocab/lottery-brazil/lotomania-result` |
+| `LOTTERY_DUPLA_SENA` | `.../vocab/lottery-brazil/dupla-sena-result` |
+
+#### sports-football
+
+| Constante | URI |
+|---|---|
+| `FOOTBALL_MATCH_RESULT` | `.../vocab/sports-football/match-result` |
+| `FOOTBALL_MATCH_LIVE` | `.../vocab/sports-football/match-live` |
+| `FOOTBALL_STANDINGS` | `.../vocab/sports-football/standings-update` |
+
+#### weather
+
+| Constante | URI |
+|---|---|
+| `WEATHER_CURRENT` | `.../vocab/weather/forecast-current` |
+| `WEATHER_DAILY` | `.../vocab/weather/forecast-daily` |
+| `WEATHER_ALERT` | `.../vocab/weather/alert-severe` |
+
+#### finance / finance-brazil
+
+| Constante | URI |
+|---|---|
+| `FINANCE_STOCK` | `.../vocab/finance/quote-stock` |
+| `FINANCE_CRYPTO` | `.../vocab/finance/quote-crypto` |
+| `FINANCE_FOREX` | `.../vocab/finance/quote-forex` |
+| `FINANCE_INDEX` | `.../vocab/finance/index-update` |
+
+Consulta la [especificación del dominio finance.brazil](/docs/spec/domains/finance-brazil/) para
+los tipos de contenido completos de finanzas brasileñas.
+
+## 8. Registro de fuentes
+
+Una fuente representa un proveedor de datos upstream verificado. Cada fuente se identifica
+por un URI con la forma `https://signed-data.org/sources/{source-id}`.
+
+### Documento de fuente
+
+Dereferenciar un URI de fuente devuelve un documento JSON-LD:
+
+```json
+{
+  "@context": "https://signed-data.org/contexts/cds/v1.jsonld",
+  "@type":    "https://signed-data.org/vocab/DataSource",
+  "@id":      "https://signed-data.org/sources/caixa.gov.br.loterias.v1",
+  "name":     "Caixa Econômica Federal — Loterias",
+  "domain":   "caixa.gov.br",
+  "version":  "v1",
+  "upstream": "https://servicebus2.caixa.gov.br/portaldeloterias/api/megasena",
+  "content_types": [
+    "https://signed-data.org/vocab/lottery-brazil/mega-sena-result",
+    "https://signed-data.org/vocab/lottery-brazil/lotofacil-result"
+  ]
+}
+```
+
+### Fuentes registradas
+
+| Constante | URI de fuente |
+|---|---|
+| `CAIXA_LOTERIAS` | `.../sources/caixa.gov.br.loterias.v1` |
+| `API_FOOTBALL` | `.../sources/api-football.com.v3` |
+| `OPEN_METEO` | `.../sources/open-meteo.com.v1` |
+| `BRAPI` | `.../sources/brapi.dev.v1` |
+| `BCB_SGS` | `.../sources/api.bcb.gov.br.v1` |
+| `CONAB` | `.../sources/conab.gov.br.v1` |
+| `WORLD_BANK` | `.../sources/api.worldbank.org.v2` |
+| `BRASILAPI` | `.../sources/brasilapi.com.br.v1` |
+
+## 9. Vocabulario
+
+La ontología CDS se publica en `https://signed-data.org/vocab/`. Define
+las clases y propiedades utilizadas en los eventos CDS.
+
+### Clases
+
+| Clase | URI | Descripción |
+|---|---|---|
+| `CuratedDataEvent` | `.../vocab/CuratedDataEvent` | El envoltorio de evento de nivel superior |
+| `IntegrityMeta` | `.../vocab/IntegrityMeta` | Prueba criptográfica adjunta a un evento |
+| `DataSource` | `.../vocab/DataSource` | Un proveedor de datos upstream registrado |
+
+### Propiedades
+
+| Propiedad | URI | Dominio | Rango |
+|---|---|---|---|
+| `specVersion` | `.../vocab/specVersion` | `CuratedDataEvent` | `xsd:string` |
+| `contentType` | `.../vocab/contentType` | `CuratedDataEvent` | URI |
+| `source` | `.../vocab/source` | `CuratedDataEvent` | `DataSource` |
+| `occurredAt` | `.../vocab/occurredAt` | `CuratedDataEvent` | `xsd:dateTime` |
+| `ingestedAt` | `.../vocab/ingestedAt` | `CuratedDataEvent` | `xsd:dateTime` |
+| `lang` | `.../vocab/lang` | `CuratedDataEvent` | `xsd:string` |
+| `payload` | `.../vocab/payload` | `CuratedDataEvent` | objeto JSON |
+| `context` | `.../vocab/context` | `CuratedDataEvent` | objeto JSON |
+| `hash` | `.../vocab/hash` | `IntegrityMeta` | `xsd:string` |
+| `signature` | `.../vocab/signature` | `IntegrityMeta` | `xsd:string` |
+| `signedBy` | `.../vocab/signedBy` | `IntegrityMeta` | URI |
+| `fingerprint` | `.../vocab/fingerprint` | `DataSource` | `xsd:string` |
+
+## 10. Algoritmo de firma
+
+1. Serializar a JSON canónico — `sort_keys=True`, UTF-8, excluyendo `integrity` e `ingested_at`
+2. `hash = "sha256:" + SHA256(canonical_bytes).hexdigest()`
+3. Firmar `canonical_bytes` con **RSA-PSS** (digest SHA-256, MGF1, longitud máxima de salt)
+4. Codificar la firma como base64
+5. Adjuntar `IntegrityMeta { hash, signature, signed_by }`
+
+Verificación: re-serializar bytes canónicos, verificar el hash, verificar la firma RSA-PSS
+con la clave pública del emisor publicada en
+`https://signed-data.org/.well-known/cds-public-key.pem`.
+
+<Aside type="caution" title="Bytes canónicos en v0.2.0">
+Los bytes canónicos ahora **incluyen** los campos `@context`, `@type` y `@id`
+(que no existían en v0.1.0). El conjunto de exclusión sigue siendo `integrity` e
+`ingested_at` solamente. Un evento v0.1.0 no puede ser verificado por un verificador v0.2.0, y
+viceversa, porque los bytes canónicos difieren.
+</Aside>
+
+Para todos los detalles, consulta [Firma](/docs/signing/).
+
+## 11. Compatibilidad con JSON-LD
+
+El `@context` en `https://signed-data.org/contexts/cds/v1.jsonld` mapea las
+claves JSON snake_case usadas por CDS a predicados RDF:
+
+```json
+{
+  "@context": {
+    "@vocab":       "https://signed-data.org/vocab/",
+    "spec_version": "specVersion",
+    "content_type": { "@id": "contentType", "@type": "@id" },
+    "source":       { "@id": "source",      "@type": "@id" },
+    "occurred_at":  "occurredAt",
+    "ingested_at":  "ingestedAt",
+    "signed_by":    { "@id": "signedBy",    "@type": "@id" },
+    "fingerprint":  "fingerprint",
+    "lang":         "lang",
+    "payload":      "payload",
+    "context":      "context",
+    "hash":         "hash",
+    "signature":    "signature",
+    "integrity":    "integrity"
+  }
+}
+```
+
+Esto logra dos objetivos simultáneamente:
+
+1. **Los consumidores de JSON simple no se ven afectados.** Un consumidor que ignora `@context`,
+   `@type` y `@id` lee todos los demás campos exactamente como antes. No se requiere
+   biblioteca JSON-LD.
+2. **Los consumidores RDF obtienen triples válidos.** Un procesador JSON-LD expande cualquier evento
+   CDS a un grafo RDF. Los campos tipados como `@id` producen enlaces RDF apropiados.
+
+## 12. Cambios incompatibles desde v0.1.0
+
+| Cambio | v0.1.0 | v0.2.0 | Impacto |
+|---|---|---|---|
+| Tipo del campo `content_type` | objeto `CDSContentType` | cadena URI | Todo el código que lee `content_type.domain` debe cambiar |
+| `source.id` renombrado a `source.@id` | cadena opaca | URI HTTP | Cambio de clave JSON; usa los helpers del SDK |
+| `integrity.signed_by` | `"signed-data.org"` | `"https://signed-data.org"` | La comparación de cadenas se romperá |
+| Bytes canónicos | Excluyen `integrity`, `ingested_at` | Mismas exclusiones, pero incluyen `@context`, `@type`, `@id` | Las firmas v0.1.0 no pueden ser verificadas por verificadores v0.2.0 |
+| Nuevos campos requeridos | N/A | `@context`, `@type`, `@id` | Los productores deben incluir estos campos |
+
+Para ejemplos de código de migración, consulta [Migración v0.1 → v0.2](/docs/spec/migration-v0-1-to-v0-2/).

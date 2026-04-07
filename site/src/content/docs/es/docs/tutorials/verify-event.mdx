@@ -1,0 +1,145 @@
+---
+title: Verifica un evento CDS
+description: Verifica la firma de un evento CDS con Python y TypeScript.
+---
+
+import { Steps, Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Este tutorial te guía a través de la verificación de un evento CDS que recibiste de algún
+otro lugar — un archivo, una respuesta HTTP, una llamada a una herramienta MCP. La verificación es una operación
+**local**; solo requiere la clave pública del emisor. No se necesita ninguna llamada de red
+una vez que tengas la clave pública en tu poder.
+
+## Prerrequisitos
+
+- El evento que quieres verificar (un archivo JSON o un objeto en memoria)
+- La clave pública del emisor
+- El SDK CDS instalado (`pip install signeddata-cds` o `npm install @signeddata/cds-sdk`)
+
+<Steps>
+
+1. **Obtén la clave pública del emisor**
+
+   El emisor publica su clave pública en una URL well-known:
+
+   ```
+   https://{issuer}/.well-known/cds-public-key.pem
+   ```
+
+   Para `signed-data.org`:
+
+   ```bash
+   curl -o signed-data-org.pub.pem \
+     https://signed-data.org/.well-known/cds-public-key.pem
+   ```
+
+   Guarda el archivo en algún lugar donde tu código pueda leerlo.
+
+2. **Carga el evento**
+
+   <Tabs>
+     <TabItem label="Python">
+   ```python
+   import json
+
+   with open("event.json") as f:
+       event_data = json.load(f)
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```typescript
+   import { readFileSync } from "node:fs";
+
+   const eventData = JSON.parse(readFileSync("event.json", "utf-8"));
+   ```
+     </TabItem>
+   </Tabs>
+
+3. **Verifica la firma**
+
+   <Tabs>
+     <TabItem label="Python">
+   ```python
+   from cds import CDSEvent, CDSVerifier
+
+   event    = CDSEvent.from_jsonld(event_data)
+   verifier = CDSVerifier("signed-data-org.pub.pem")
+
+   try:
+       verifier.verify(event)
+       print("Valid — data is authentic and unmodified")
+   except Exception as e:
+       print(f"Invalid — {e}")
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```typescript
+   import { CDSEvent, CDSVerifier } from "@signeddata/cds-sdk";
+
+   const event    = CDSEvent.fromJSON(eventData);
+   const verifier = new CDSVerifier("signed-data-org.pub.pem");
+
+   try {
+     verifier.verify(event);
+     console.log("Valid — data is authentic and unmodified");
+   } catch (e) {
+     console.log(`Invalid — ${(e as Error).message}`);
+   }
+   ```
+     </TabItem>
+   </Tabs>
+
+4. **Intenta alterar el evento**
+
+   Modifica cualquier campo del payload y verifica de nuevo — la firma será
+   rechazada inmediatamente:
+
+   ```python
+   event.payload["temperature"]["current"] = 99.0  # ¡alteración!
+   verifier.verify(event)  # lanza: Hash mismatch
+   ```
+
+   Cualquier cambio a cualquier campo — incluyendo `payload`, `context.summary`, o
+   `source.fingerprint` — invalida la firma. No hay forma de re-firmar
+   selectivamente parte de un evento.
+
+</Steps>
+
+## Lo que prueba la verificación
+
+Una verificación exitosa prueba tres cosas:
+
+1. **Autenticidad** — el evento fue firmado por el poseedor de la clave privada
+   que coincide con esta clave pública. Si el emisor es `https://signed-data.org`, el
+   evento fue emitido por signed-data.org.
+2. **Integridad** — los bytes canónicos no han cambiado desde la firma. Cada
+   campo en el evento es exactamente como lo produjo el emisor.
+3. **Aserción de fuente** — el emisor atestigua que el `payload` se derivó
+   de la API upstream `source.@id` en `occurred_at`, y que los bytes crudos
+   coincidían con el SHA-256 en `source.fingerprint`.
+
+**No** prueba que la fuente upstream sea correcta. El emisor firma
+*lo que recibió* — no la verdad subyacente.
+
+<Aside type="tip" title="Múltiples emisores">
+Un consumidor puede tener muchas claves públicas y enrutar la verificación por `signed_by`:
+
+```python
+KNOWN_ISSUERS = {
+    "https://signed-data.org":   CDSVerifier("signed-data-org.pub.pem"),
+    "https://mycompany.example.com": CDSVerifier("mycompany.pub.pem"),
+}
+
+verifier = KNOWN_ISSUERS.get(event.integrity.signed_by)
+if not verifier:
+    raise ValueError(f"Unknown issuer: {event.integrity.signed_by}")
+verifier.verify(event)
+```
+</Aside>
+
+## Verificación entre versiones
+
+Los eventos v0.1.0 y v0.2.0 usan **reglas de bytes canónicos diferentes**. Un verificador
+v0.1.0 no puede verificar un evento v0.2.0, y viceversa. Comprueba siempre
+`spec_version` primero si manejas una mezcla de eventos legados y actuales. Consulta
+[Migración v0.1 → v0.2](/docs/spec/migration-v0-1-to-v0-2/) para más detalles.

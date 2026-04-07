@@ -1,0 +1,140 @@
+---
+title: Self-host an issuer
+description: Run your own CDS issuer locally and publish your public key.
+---
+
+import { Steps, Aside } from '@astrojs/starlight/components';
+
+This tutorial walks through running your own CDS issuer end-to-end at the
+**minimum viable** scale: a local Python script that fetches a real upstream
+API, signs the result, and prints the signed envelope. From there you can scale
+up to scheduled cron jobs, S3-backed event stores, and AWS deployments — but
+the trust model is identical at every scale.
+
+## Why self-host
+
+- **You own the trust anchor.** Consumers verify with *your* public key, not
+  signed-data.org's.
+- **You control ingestion cadence and source selection.**
+- **You can extend the vocabulary** with custom domains and content types.
+- **No vendor lock-in.** The signature lives inside the event and is portable.
+
+## Prerequisites
+
+- Python 3.12+
+- 10 minutes
+- A domain name (for production; not needed for the local walkthrough)
+
+<Steps>
+
+1. **Install the SDK and generate keys**
+
+   ```bash
+   pip install signeddata-cds
+
+   python3 -c "
+   from cds import generate_keypair
+   import os; os.makedirs('keys', exist_ok=True)
+   generate_keypair('keys/private.pem', 'keys/public.pem')
+   "
+   ```
+
+2. **Run the lottery ingestor with your own issuer URI**
+
+   ```python
+   import asyncio
+   from cds import CDSSigner
+   from cds.sources.lottery import MegaSenaIngestor
+
+   signer   = CDSSigner("keys/private.pem", issuer="https://mycompany.example.com")
+   ingestor = MegaSenaIngestor(signer=signer)
+   events   = asyncio.run(ingestor.ingest())
+
+   for e in events:
+       print(e.context.summary)
+       print(f"  signed_by: {e.integrity.signed_by}")
+       print(f"  hash:      {e.integrity.hash[:32]}...")
+   ```
+
+   The signed event now declares **you** as the issuer:
+
+   ```
+   "integrity": {
+     "signed_by": "https://mycompany.example.com",
+     ...
+   }
+   ```
+
+3. **Verify with your own public key**
+
+   ```python
+   from cds import CDSVerifier
+
+   verifier = CDSVerifier("keys/public.pem")
+   verifier.verify(events[0])  # raises if tampered
+   print("Valid")
+   ```
+
+4. **Publish your public key (production)**
+
+   For consumers to verify your events without out-of-band key exchange,
+   publish your public key at:
+
+   ```
+   https://mycompany.example.com/.well-known/cds-public-key.pem
+   ```
+
+   Use any static-file host: S3 + CloudFront, GitHub Pages, Cloudflare Pages,
+   nginx — anything that serves PEM files over HTTPS.
+
+5. **(Optional) Publish your vocabulary**
+
+   For full Linked Data compliance, also serve:
+
+   ```
+   https://mycompany.example.com/vocab/          → cds.jsonld
+   https://mycompany.example.com/vocab/domains/  → domain files
+   https://mycompany.example.com/sources/        → source registry
+   https://mycompany.example.com/contexts/cds/v1.jsonld
+   ```
+
+   Set `Content-Type: application/ld+json` for all `.jsonld` files. You can
+   start by mirroring the reference vocabulary from
+   `https://signed-data.org/vocab/` and adapting it to your needs.
+
+</Steps>
+
+## What stays the same
+
+The envelope format, content types, signing algorithm, and domain specs are
+**identical** to `signed-data.org`. Your events are verifiable by any CDS
+consumer — they just use your public key instead of ours. See
+[Self-hosting](/docs/self-hosting/) for the full reference.
+
+## What changes
+
+| Property | signed-data.org | Your deployment |
+|---|---|---|
+| `integrity.signed_by` | `https://signed-data.org` | `https://mycompany.example.com` |
+| Public key URL | `signed-data.org/.well-known/...` | `mycompany.example.com/.well-known/...` |
+| Infrastructure | Our AWS account | Your AWS / GCP / Azure account |
+| Ingestor schedule | Our crons | Your crons |
+
+<Aside type="tip">
+The trust anchor is **your organisation**, not signed-data.org. You publish
+your public key, your vocabulary, and your source registry; consumers fetch
+those resources from your domain. The CDS standard never assumes a single
+issuer.
+</Aside>
+
+## Going to production
+
+Once the local script works, the natural next steps are:
+
+1. **Schedule** the ingestor (cron, systemd timer, GitHub Actions, AWS EventBridge)
+2. **Persist** events to S3 (append-only, partitioned by `domain/date/event_id`)
+3. **Manage secrets** properly — move the private key to AWS Secrets Manager,
+   Azure Key Vault, or an HSM
+4. **Stand up an MCP server** in front of your event store so LLMs can consume
+   the data — see the [Connect Claude to an MCP server](/docs/tutorials/claude-mcp-setup/) tutorial
+5. **Monitor and alert** on ingestion failures and signature mismatches

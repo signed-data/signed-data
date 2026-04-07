@@ -1,0 +1,201 @@
+---
+title: Getting started
+description: Sign and verify your first CDS event in under ten minutes.
+---
+
+import { Steps, Tabs, TabItem, Aside, LinkCard, CardGrid } from '@astrojs/starlight/components';
+
+This guide takes you from zero to a running CDS pipeline in under ten minutes.
+You will install the SDK, generate a signing keypair, build your first signed event,
+and verify it.
+
+## Prerequisites
+
+- Python 3.12+ **or** Node.js 20+
+- Five minutes
+
+<Steps>
+
+1. **Install the SDK**
+
+   <Tabs>
+     <TabItem label="Python">
+   ```bash
+   pip install signeddata-cds
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```bash
+   npm install @signeddata/cds-sdk
+   ```
+     </TabItem>
+   </Tabs>
+
+2. **Generate a keypair**
+
+   Every CDS producer needs an RSA-4096 keypair. Generate one:
+
+   <Tabs>
+     <TabItem label="Python">
+   ```python
+   from cds import generate_keypair
+   import os
+
+   os.makedirs("keys", exist_ok=True)
+   generate_keypair("keys/private.pem", "keys/public.pem")
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```typescript
+   import { generateKeypair } from "@signeddata/cds-sdk";
+   import { mkdirSync } from "node:fs";
+
+   mkdirSync("keys", { recursive: true });
+   generateKeypair("keys/private.pem", "keys/public.pem");
+   ```
+     </TabItem>
+   </Tabs>
+
+   <Aside type="caution" title="Protect your private key">
+   `keys/private.pem` is your trust anchor. Add `keys/` to `.gitignore` immediately.
+   In production, store it in AWS Secrets Manager, Azure Key Vault, or an HSM.
+   </Aside>
+
+3. **Build and sign your first event**
+
+   <Tabs>
+     <TabItem label="Python">
+   ```python
+   from cds import CDSSigner, CDSEvent, SourceMeta, ContextMeta
+   from cds import CDSVocab, CDSSources
+   from datetime import datetime, timezone
+
+   signer = CDSSigner("keys/private.pem", issuer="https://myorg.example.com")
+
+   event = CDSEvent(
+       content_type  = CDSVocab.WEATHER_CURRENT,
+       source        = SourceMeta(id=CDSSources.OPEN_METEO),
+       occurred_at   = datetime.now(timezone.utc),
+       lang          = "en",
+       payload       = {
+           "location":    {"city": "London", "lat": 51.51, "lon": -0.13},
+           "temperature": {"current": 14.0, "feels_like": 12.0},
+           "condition":   "overcast",
+       },
+       event_context = ContextMeta(
+           summary = "London: overcast, 14C (feels 12C).",
+           model   = "rule-based-v1",
+       ),
+   )
+
+   signer.sign(event)
+   print(event.integrity.hash)       # sha256:...
+   print(event.integrity.signed_by)  # https://myorg.example.com
+   ```
+     </TabItem>
+     <TabItem label="TypeScript">
+   ```typescript
+   import { CDSEvent, CDSSigner, CDSVocab, CDSSources } from "@signeddata/cds-sdk";
+
+   const signer = new CDSSigner("keys/private.pem", "https://myorg.example.com");
+
+   const event = new CDSEvent({
+     content_type: CDSVocab.WEATHER_CURRENT,
+     source:       { "@id": CDSSources.OPEN_METEO },
+     occurred_at:  new Date(),
+     lang:         "en",
+     payload:      {
+       location:    { city: "London", lat: 51.51, lon: -0.13 },
+       temperature: { current: 14.0, feels_like: 12.0 },
+       condition:   "overcast",
+     },
+     context: {
+       summary:      "London: overcast, 14C (feels 12C).",
+       model:        "rule-based-v1",
+       generated_at: new Date().toISOString(),
+     },
+   });
+
+   signer.sign(event);
+   console.log(event.toJSON()); // JSON-LD with @context, @type, @id
+   ```
+     </TabItem>
+   </Tabs>
+
+4. **Verify the event**
+
+   The consumer only needs your **public** key.
+
+   ```python
+   from cds import CDSVerifier
+
+   verifier = CDSVerifier("keys/public.pem")
+   try:
+       verifier.verify(event)
+       print("Valid — data is authentic and unmodified")
+   except Exception as e:
+       print(f"Invalid — {e}")
+   ```
+
+   Modify any field and verify again — the signature will be rejected:
+
+   ```python
+   event.payload["temperature"]["current"] = 99.0  # tamper!
+   verifier.verify(event)  # raises: Hash mismatch
+   ```
+
+5. **Use a built-in ingestor**
+
+   CDS ships ingestors for several domains. They handle HTTP, parsing, fingerprinting,
+   and signing automatically.
+
+   ```python
+   from cds import CDSSigner
+   from cds.sources.lottery import MegaSenaIngestor
+   import asyncio
+
+   signer   = CDSSigner("keys/private.pem", issuer="https://myorg.example.com")
+   ingestor = MegaSenaIngestor(signer=signer)
+   events   = asyncio.run(ingestor.ingest())  # latest draw
+   print(events[0].event_context.summary)
+   # "Mega Sena concurso 2800 (29/03/2026): 04 · 12 · 25 · 36 · 47 · 59. ..."
+   ```
+
+6. **Connect to Claude via MCP**
+
+   To give Claude access to signed CDS data, install one of the MCP servers:
+
+   ```bash
+   pip install signeddata-mcp-lottery
+   ```
+
+   Add to your Claude Desktop config (`~/.config/claude/claude_desktop_config.json`):
+
+   ```json
+   {
+     "mcpServers": {
+       "lottery": {
+         "command": "signeddata-mcp-lottery",
+         "env": {
+           "CDS_PRIVATE_KEY_PATH": "/path/to/keys/private.pem",
+           "CDS_ISSUER": "https://myorg.example.com"
+         }
+       }
+     }
+   }
+   ```
+
+   Claude can now call `get_mega_sena_latest`, `check_mega_sena_ticket`, and more.
+
+</Steps>
+
+## Next steps
+
+<CardGrid>
+  <LinkCard title="Architecture" href="/docs/architecture/" description="How the full pipeline fits together" />
+  <LinkCard title="Linked Data" href="/docs/linked-data/" description="Why every event is valid JSON-LD" />
+  <LinkCard title="Signing" href="/docs/signing/" description="The cryptographic details" />
+  <LinkCard title="Content types" href="/docs/content-types/" description="The URI-based type system" />
+  <LinkCard title="Self-hosting" href="/docs/self-hosting/" description="Run your own infrastructure" />
+  <LinkCard title="Spec v0.2.0" href="/docs/spec/v0-2-0/" description="The formal specification" />
+</CardGrid>
