@@ -52,12 +52,41 @@ export class HomeSiteStack extends cdk.Stack {
       description: 'OAC for signed-data.org marketing site',
     })
 
-    // Rewrite directory URIs to index.html (required for i18n subpaths like /pt-br/)
+    // Two responsibilities, one viewer-request function (CloudFront allows
+    // only one function per behavior per event type):
+    //   1. 301 any non-canonical hostname (www.signed-data.org, signeddata.org,
+    //      www.signeddata.org) → https://signed-data.org<uri><querystring>.
+    //   2. For the canonical host, rewrite directory URIs to index.html so
+    //      i18n subpaths like /pt-br/ resolve to the right object in S3.
     const indexRewrite = new cloudfront.Function(this, 'IndexRewriteFn', {
       code: cloudfront.FunctionCode.fromInline(
         `
 function handler(event) {
   var request = event.request;
+  var host = request.headers.host && request.headers.host.value;
+
+  if (host && host !== '${PRIMARY_DOMAIN}') {
+    var qs = request.querystring;
+    var parts = [];
+    for (var k in qs) {
+      if (qs[k].multiValue) {
+        for (var i = 0; i < qs[k].multiValue.length; i++) {
+          parts.push(k + '=' + qs[k].multiValue[i].value);
+        }
+      } else {
+        parts.push(k + '=' + qs[k].value);
+      }
+    }
+    var qsString = parts.length ? '?' + parts.join('&') : '';
+    return {
+      statusCode: 301,
+      statusDescription: 'Moved Permanently',
+      headers: {
+        location: { value: 'https://${PRIMARY_DOMAIN}' + request.uri + qsString },
+      },
+    };
+  }
+
   var uri = request.uri;
   if (uri.endsWith('/')) {
     request.uri += 'index.html';
@@ -69,7 +98,7 @@ function handler(event) {
       `.trim(),
       ),
       runtime: cloudfront.FunctionRuntime.JS_2_0,
-      comment: 'Append index.html to directory-style URIs for i18n subpaths',
+      comment: '301 non-canonical hosts to signed-data.org; index.html rewrite for i18n subpaths',
     })
 
     this.distribution = new cloudfront.Distribution(this, 'SiteDist', {
