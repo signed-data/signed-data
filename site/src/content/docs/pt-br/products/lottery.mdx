@@ -9,11 +9,35 @@ Sorteios das loterias da Caixa Econômica Federal como ferramentas MCP para Clau
 Quina, Lotomania e Dupla Sena. Cada sorteio é buscado da API pública da Caixa,
 fingerprintado e assinado por `signed-data.org`.
 
+**Endpoint:** `https://lottery.mcp.signed-data.org/mcp`
 **Especificação do domínio:** [lottery.brazil](/docs/spec/domains/lottery-brazil/)
 
 ## Início rápido
 
 <Tabs>
+  <TabItem label="Remoto (zero instalação)">
+
+Adicione à sua configuração do Claude Desktop (`~/.config/claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "signeddata-lottery": {
+      "url": "https://lottery.mcp.signed-data.org/mcp"
+    }
+  }
+}
+```
+
+Ou teste via curl:
+
+```bash
+curl -X POST https://lottery.mcp.signed-data.org/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+  </TabItem>
   <TabItem label="Local">
 
 ```bash

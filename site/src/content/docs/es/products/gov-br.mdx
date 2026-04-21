@@ -1,0 +1,117 @@
+---
+title: Gov-BR (Brasil)
+description: Datos firmados de transparencia del gobierno brasileño — verificaciones de sanciones federales — como herramientas MCP para Claude.
+---
+
+import { Tabs, TabItem, Aside } from '@astrojs/starlight/components';
+
+Datos firmados de transparencia del gobierno brasileño del Portal da Transparência. Consulte
+registros de sanciones federales (CEIS y CNEP) por CNPJ para verificar la legitimidad de
+proveedores y estado de cumplimiento. Todos los resultados están firmados criptográficamente
+y marcados con timestamp por `signed-data.org`.
+
+**Endpoint:** `https://gov-br.mcp.signed-data.org/mcp`
+**Especificación del dominio:** [government.brazil](/docs/spec/domains/government-brazil/)
+
+## Inicio rápido
+
+<Tabs>
+  <TabItem label="Remoto (sin instalación)">
+
+Agregue a su configuración de Claude Desktop (`~/.config/claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "signeddata-gov-br": {
+      "url": "https://gov-br.mcp.signed-data.org/mcp"
+    }
+  }
+}
+```
+
+O pruebe mediante curl:
+
+```bash
+curl -X POST https://gov-br.mcp.signed-data.org/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+  </TabItem>
+  <TabItem label="Local">
+
+Requiere un token gratuito de la API del Portal da Transparência:
+
+```bash
+# Obtenga un token gratuito en:
+# https://portaldatransparencia.gov.br/api-de-dados/cadastrar-email
+
+pip install signeddata-cds
+pip install signeddata-mcp-gov-br
+```
+
+Luego en `~/.config/claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "signeddata-gov-br": {
+      "command": "signeddata-mcp-gov-br",
+      "env": {
+        "PORTAL_TRANSPARENCIA_TOKEN": "su-token-api-gratuito",
+        "CDS_PRIVATE_KEY_PATH": "/path/to/keys/private.pem",
+        "CDS_PUBLIC_KEY_PATH":  "/path/to/keys/public.pem",
+        "CDS_ISSUER":           "signed-data.org"
+      }
+    }
+  }
+}
+```
+
+  </TabItem>
+  <TabItem label="Desde el código fuente">
+
+```bash
+git clone https://github.com/signed-data/cds.git && cd cds
+pip install -e sdk/python
+pip install -e mcp/gov-br
+PORTAL_TRANSPARENCIA_TOKEN=su-token signeddata-mcp-gov-br
+```
+
+  </TabItem>
+</Tabs>
+
+## Herramientas
+
+| Herramienta | Descripción |
+|---|---|
+| `check_sanctions` | Consultar estado de sanciones federales (CEIS + CNEP) por CNPJ |
+
+## Recursos
+
+| URI | Descripción |
+|---|---|
+| `gov-br://sanctions/{cnpj}` | Resultado de consulta de sanciones como JSON |
+
+## Fuentes de datos
+
+| Fuente | URL | Autenticación |
+|---|---|---|
+| Portal da Transparência (CGU) | `portaldatransparencia.gov.br/api-de-dados` | Token gratuito (registro por email) |
+| Registro CEIS | Lista oficial de suspensión/inhabilitación federal | Vía Portal |
+| Registro CNEP | Sanciones Ley Anticorrupción (Lei 12.846/2013) | Vía Portal |
+
+## Variables de entorno
+
+| Variable | Descripción | Predeterminado |
+|---|---|---|
+| `PORTAL_TRANSPARENCIA_TOKEN` | Token de API del Portal da Transparência | (requerido para uso alojado) |
+| `CDS_PRIVATE_KEY_PATH` | Ruta a la clave privada RSA para firmar | (sin firma si no se establece) |
+| `CDS_PUBLIC_KEY_PATH` | Ruta a la clave pública RSA para verificación | (omitir verificación) |
+| `CDS_ISSUER` | URI del emisor en eventos firmados | `signed-data.org` |
+
+<Aside type="note">
+El endpoint alojado requiere un token válido del Portal da Transparência configurado en el servidor.
+Para implementación local, regístrese para un token gratuito en [portaldatransparencia.gov.br/api-de-dados/cadastrar-email](https://portaldatransparencia.gov.br/api-de-dados/cadastrar-email).
+</Aside>

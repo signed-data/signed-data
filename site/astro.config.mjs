@@ -93,6 +93,11 @@ export default defineConfig({
               translations: { 'pt-BR': 'Empresas (Brasil)', es: 'Empresas (Brasil)' },
             },
             {
+              slug: 'products/gov-br',
+              label: 'Gov-BR (Brazil)',
+              translations: { 'pt-BR': 'Gov-BR (Brasil)', es: 'Gov-BR (Brasil)' },
+            },
+            {
               slug: 'products/lottery',
               label: 'Lottery (Brazil)',
               translations: { 'pt-BR': 'Loteria (Brasil)', es: 'Lotería (Brasil)' },

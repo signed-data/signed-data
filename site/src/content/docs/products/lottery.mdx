@@ -9,11 +9,35 @@ Caixa Econômica Federal lottery draws as MCP tools for Claude. Mega Sena, Lotof
 Quina, Lotomania, and Dupla Sena. Every draw is fetched from Caixa's public API,
 fingerprinted, and signed by `signed-data.org`.
 
+**Endpoint:** `https://lottery.mcp.signed-data.org/mcp`
 **Domain spec:** [lottery.brazil](/docs/spec/domains/lottery-brazil/)
 
 ## Quick start
 
 <Tabs>
+  <TabItem label="Remote (zero install)">
+
+Add to your Claude Desktop config (`~/.config/claude/claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "signeddata-lottery": {
+      "url": "https://lottery.mcp.signed-data.org/mcp"
+    }
+  }
+}
+```
+
+Or test via curl:
+
+```bash
+curl -X POST https://lottery.mcp.signed-data.org/mcp \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
+```
+
+  </TabItem>
   <TabItem label="Local">
 
 ```bash
