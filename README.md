@@ -25,32 +25,43 @@ The **Curated Data Standard** defines a universal envelope for real-time data. A
 }
 ```
 
-### [mcp-lottery](https://github.com/signed-data/mcp-lottery) — MCP Server
+### MCP Servers
 
-An [MCP](https://modelcontextprotocol.io) server that exposes Brazilian lottery results as tools for Claude and other LLMs. Mega Sena, Lotofácil, Quina, Lotomania, Dupla Sena — all from the official Caixa API, signed by default.
-
-```bash
-pip install signeddata-mcp-lottery
-python -m cds_mcp_lottery mega-sena
-```
-
-### [cds/mcp/finance](https://github.com/signed-data/cds/tree/main/mcp/finance) — MCP Product
-
-The Brazil finance MCP product exposes SELIC, IPCA, PTAX FX rates, B3 quotes, and Copom decisions as signed tools for Claude and other MCP clients.
+All MCP servers are published to PyPI and hosted at `*.mcp.signed-data.org`. Install locally or use the hosted endpoints.
 
 ```bash
 pip install signeddata-mcp-finance
-signeddata-mcp-finance --transport sse --port 8010
+pip install signeddata-mcp-commodities
+pip install signeddata-mcp-companies
+pip install signeddata-mcp-lottery
+pip install signeddata-mcp-gov-br
 ```
 
-### [cds/mcp/commodities](https://github.com/signed-data/cds/tree/main/mcp/commodities) — MCP Product
-
-The Brazil commodities MCP product exposes B3 agro futures, CONAB spot crop prices, and auditable basis spreads as signed tools for Claude and other MCP clients.
+Then run:
 
 ```bash
-pip install signeddata-mcp-commodities
-signeddata-mcp-commodities --transport sse --port 8011
+signeddata-mcp-finance       # SELIC, IPCA, PTAX FX, B3 quotes, Copom
+signeddata-mcp-commodities   # B3 agro futures, CONAB spot prices
+signeddata-mcp-companies     # CNPJ verification
+signeddata-mcp-lottery       # Mega Sena, Lotofácil, Quina, Lotomania, Dupla Sena
+signeddata-mcp-gov-br        # Federal sanctions (CEIS/CNEP) lookups
 ```
+
+Or use hosted endpoints (zero install):
+
+```json
+{
+  "mcpServers": {
+    "signeddata-finance": { "url": "https://finance.mcp.signed-data.org/mcp" },
+    "signeddata-commodities": { "url": "https://commodities.mcp.signed-data.org/mcp" },
+    "signeddata-companies": { "url": "https://companies.mcp.signed-data.org/mcp" },
+    "signeddata-lottery": { "url": "https://lottery.mcp.signed-data.org/mcp" },
+    "signeddata-gov-br": { "url": "https://gov-br.mcp.signed-data.org/mcp" }
+  }
+}
+```
+
+Full documentation: [signed-data.org/products](https://signed-data.org/products)
 
 ---
 
@@ -83,17 +94,17 @@ We only ingest from APIs with structured, reliable output. No scraping. No unver
 
 ## Registered domains
 
-| Domain | Description | Status |
-|---|---|---|
-| `weather` | Forecasts and current conditions | stable |
-| `sports.football` | Match results, live scores, standings | stable |
-| `news` | Headlines from verified publishers | stable |
-| `finance` | Quotes, prices, indices | stable |
-| `finance.brazil` | SELIC, IPCA, PTAX FX, B3 quotes, Copom | active |
-| `commodities.brazil` | B3 agro futures, CONAB spot prices, World Bank benchmarks | active |
-| `religion.bible` | Verses and passages | stable |
-| `government.brazil` | Diário Oficial, licitações | stable |
-| `lottery.brazil` | Caixa draws — Mega Sena, Lotofácil, Quina, Lotomania, Dupla Sena | stable |
+| Domain | Description | MCP Server | Status |
+|--------|-------------|-----------|--------|
+| `finance.brazil` | SELIC, IPCA, PTAX FX, B3 quotes, Copom | `signeddata-mcp-finance` | ✓ Active |
+| `commodities.brazil` | B3 agro futures, CONAB spot prices | `signeddata-mcp-commodities` | ✓ Active |
+| `companies.brazil` | CNPJ verification, company data | `signeddata-mcp-companies` | ✓ Active |
+| `lottery.brazil` | Mega Sena, Lotofácil, Quina, Lotomania, Dupla Sena | `signeddata-mcp-lottery` | ✓ Active |
+| `government.brazil` | Federal sanctions (CEIS/CNEP), transparency data | `signeddata-mcp-gov-br` | ✓ Active |
+| `weather` | Forecasts and current conditions | — | planning |
+| `sports.football` | Match results, live scores, standings | — | planning |
+| `news` | Headlines from verified publishers | — | planning |
+| `religion.bible` | Verses and passages | — | planning |
 
 ---
 
