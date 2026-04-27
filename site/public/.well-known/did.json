@@ -1,0 +1,22 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/multikey/v1"
+  ],
+  "id": "did:web:signed-data.org",
+  "controller": "did:web:signed-data.org",
+  "verificationMethod": [{
+    "id": "did:web:signed-data.org#key-1",
+    "type": "Multikey",
+    "controller": "did:web:signed-data.org",
+    "publicKeyMultibase": "zDnaeR28kGoWmjbXUk53waM4rxQZdV3KG2QzKSGCEG9dgPw38"
+  }],
+  "assertionMethod": [
+    "did:web:signed-data.org#key-1"
+  ],
+  "service": [{
+    "id": "did:web:signed-data.org#cds",
+    "type": "CuratedDataService",
+    "serviceEndpoint": "https://signed-data.org"
+  }]
+}
