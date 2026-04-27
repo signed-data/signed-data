@@ -1,10 +1,10 @@
 ---
 title: SignedData
-description: An open standard for cryptographically signed, 5-star Linked Data with embedded LLM context. CDS, SDKs, and reference operators.
+description: An open standard for cryptographically signed, W3C Verifiable Credentials. 16 MCP servers for Brazilian data. SDKs in Python and TypeScript. Operated by Wdotnet.
 template: splash
 hero:
   title: SignedData
-  tagline: An open standard for cryptographically signed, 5-star Linked Data with embedded LLM context.
+  tagline: The open standard for cryptographically signed data feeds. Every response is a W3C Verifiable Credential — independently verifiable by any consumer.
   actions:
     - text: Get started
       link: /docs/getting-started/
@@ -21,10 +21,9 @@ hero:
 <div class="card-section">
 
 Real-time data feeds have a provenance gap. When a JSON payload arrives, you trust the
-transport, the intermediaries, and the source all at once. There is no cryptographic proof
-the data is authentic, unmodified, or from who it claims to be from. At the same time,
-identities in feeds are opaque strings — LLMs need data that is both machine-readable
-*and* human-understandable.
+transport, the intermediaries, and the source — all at once. There is no cryptographic proof
+the data is authentic, unmodified, or from who it claims to be from. LLMs need data that is
+both machine-readable *and* verifiably sourced.
 
 </div>
 
@@ -37,10 +36,10 @@ for real-time data. Every identity is a dereferenceable HTTP URI; every event ca
 embedded `context.summary` so data and meaning travel together.
 
 **[SDKs](/docs/getting-started/)** in Python and TypeScript that produce, sign, and
-verify CDS events with deterministic RSA-PSS SHA-256.
+verify CDS events with ECDSA P-256 (v0.6.0+) or RSA-4096 PSS (legacy).
 
-**[MCP servers](/products/)** that expose signed Brazilian finance, commodities, companies,
-and lottery data as tools for Claude and other agents.
+**[16 MCP servers](#mcp-servers)** exposing signed Brazilian data — finance, legal, health,
+employment, geography, weather, sports, and more.
 
 </div>
 
@@ -48,26 +47,50 @@ and lottery data as tools for Claude and other agents.
 
 <div class="card-section">
 
-| Language     | Package               | Install                           |
-| ------------ | --------------------- | --------------------------------- |
-| Python 3.12+ | `signeddata-cds`      | `pip install signeddata-cds`      |
-| TypeScript   | `@signeddata/cds-sdk` | `npm install @signeddata/cds-sdk` |
+| Language     | Package               | Install                             | Version |
+| ------------ | --------------------- | ----------------------------------- | ------- |
+| Python 3.12+ | `signeddata-cds`      | `pip install signeddata-cds`        | 0.6.0   |
+| TypeScript   | `@signeddata/cds-sdk` | `npm install @signeddata/cds-sdk`   | 0.6.0   |
+
+v0.6.0 adds W3C VC 2.0 profile (`DataIntegrityProof`, `sign_vc20`, `verify_vc20`), ECDSA P-256 signing, and MCP servers for judicial processes, news, CEP, Bible, ANVISA, and energy tariffs.
 
 </div>
 
 ## MCP servers
 
+<div class="card-section" id="mcp-servers">
+
+All servers live at `*.mcp.signed-data.org` and are operated by [Wdotnet](https://wdotnet.com.br). Each tool response is a W3C Verifiable Credential signed with ECDSA P-256.
+
+| Server | Data | Endpoint |
+| ------ | ---- | -------- |
+| Finance | SELIC, IPCA, FX, B3 quotes, Copom decisions | `finance.mcp.signed-data.org` |
+| Commodities | B3 agro futures, CONAB spot, basis spreads | `commodities.mcp.signed-data.org` |
+| Companies | CNPJ profiles and partner records (BrasilAPI) | `companies.mcp.signed-data.org` |
+| Gov-BR | Portal da Transparência — sanctions, licitações | `gov-br.mcp.signed-data.org` |
+| Lottery | Mega Sena, Lotofácil, Quina, Timemania, … | `lottery.mcp.signed-data.org` |
+| IBGE | Municipal demographics, PIB, regional stats | `ibge.mcp.signed-data.org` |
+| B3 Fundamentus | Equity indicators — P/L, EV/EBITDA, dividend yield | `b3.mcp.signed-data.org` |
+| Currency | 150+ currencies vs BRL (BCB PTAX + AwesomeAPI) | `currency.mcp.signed-data.org` |
+| Processo | Judicial processes via DataJud/CNJ | `processo.mcp.signed-data.org` |
+| Notícias | Brazilian news headlines (GDELT) | `noticias.mcp.signed-data.org` |
+| CEP | Postal address lookup (ViaCEP) | `cep.mcp.signed-data.org` |
+| ANVISA | Drug, cosmetic, and food registrations | `anvisa.mcp.signed-data.org` |
+| Bible | Verses and passages — Almeida (pt), KJV, WEB | `bible.mcp.signed-data.org` |
+| Energia | ANEEL electricity tariffs by distributor | `energia.mcp.signed-data.org` |
+| Weather | Current conditions and forecasts (Open-Meteo) | `weather.mcp.signed-data.org` |
+| Sports | Football matches, standings, live scores | `sports.mcp.signed-data.org` |
+
+</div>
+
+## Get hosted access
+
 <div class="card-section">
 
-| Server                                       | Domain                                     | Endpoint                              |
-| -------------------------------------------- | ------------------------------------------ | ------------------------------------- |
-| [Finance](/products/finance/)                | SELIC, IPCA, FX, B3 quotes, Copom          | `finance.mcp.signed-data.org`         |
-| [Commodities](/products/commodities/)        | B3 agro futures, CONAB spot, basis spreads | `commodities.mcp.signed-data.org`     |
-| [Companies](/products/companies/)            | CNPJ profiles and partner records          | `companies.mcp.signed-data.org`       |
-| [Lottery](/products/lottery/)                | Mega Sena, Lotofácil, Quina, …             | `pip install signeddata-mcp-lottery`  |
-| [Soccer news](https://github.com/signed-data/cds-mcp-soccer-brazil) † | Brasileirão, Libertadores, Premier League  | `mcp.signed-data.org` |
+Want production-ready MCP servers with no infrastructure?
+**Wdotnet** operates every server above with uptime SLAs, API key auth, and WAF protection.
 
-<small>† Legacy v0.1.0 envelope — pending migration to v0.2.0 Linked Data.</small>
+→ **[wdotnet.com.br](https://wdotnet.com.br)**
 
 </div>
 
@@ -76,10 +99,10 @@ and lottery data as tools for Claude and other agents.
 <div class="card-section">
 
 - **Standard is the contract.** CDS and SDKs are infrastructure-agnostic; anyone can run ingestors and operators.
-- **Provenance, not only TLS.** HTTPS secures the channel; signatures anchor the payload.
-- **5-star Linked Data.** URI-based identities, JSON-LD envelopes, dereferenceable everything.
+- **Provenance, not only TLS.** HTTPS secures the channel; W3C VC signatures anchor the payload.
+- **Linked Data.** URI-based identities, JSON-LD envelopes, dereferenceable everything.
 - **LLM-ready.** Events include a `context.summary` so data and meaning travel together.
-- **Curated.** Structured sources, registered and fingerprinted — no unverified scraping.
+- **Open.** MIT licensed. The standard, SDKs, and MCP server source are all public.
 
 </div>
 
@@ -93,11 +116,16 @@ and lottery data as tools for Claude and other agents.
 | `sports.football`    | Results, live scores, standings                    |
 | `news`               | Headlines from verified publishers                 |
 | `finance`            | Quotes, prices, indices                            |
-| `finance.brazil`     | SELIC, CDI, IPCA, FX, B3, Copom                    |
+| `finance.brazil`     | SELIC, CDI, IPCA, FX, B3, Copom, equity indicators |
 | `commodities.brazil` | B3 agro futures, CONAB spot, World Bank indices    |
 | `companies.brazil`   | CNPJ profiles, partners (QSA) via BrasilAPI        |
-| `religion.bible`     | Verses and passages                                |
-| `government.brazil`  | Diário Oficial, licitações                         |
+| `government.brazil`  | Sanctions, licitações, Portal da Transparência     |
+| `legal.brazil`       | Judicial processes via DataJud/CNJ                 |
+| `demographics.brazil`| Municipal stats, PIB, regional comparison (IBGE)  |
+| `location.brazil`    | CEP postal address lookup                          |
+| `regulatory.brazil`  | ANVISA drug, cosmetic, food registrations          |
+| `religion.bible`     | Verses, passages, daily reading                    |
+| `energy.brazil`      | ANEEL electricity tariffs by distributor           |
 | `lottery.brazil`     | Caixa draws (Mega Sena, Lotofácil, …)              |
 
 </div>
@@ -107,6 +135,6 @@ and lottery data as tools for Claude and other agents.
 MIT ·
 [This site on GitHub](https://github.com/signed-data/signed-data) ·
 [signed-data.org](https://signed-data.org) ·
-[signeddata.org](https://signeddata.org)
+[Hosted MCP servers by Wdotnet](https://wdotnet.com.br)
 
 </footer>
