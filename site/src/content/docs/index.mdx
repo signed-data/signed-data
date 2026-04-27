@@ -1,6 +1,6 @@
 ---
 title: SignedData
-description: An open standard for cryptographically signed, W3C Verifiable Credentials. 16 MCP servers for Brazilian data. SDKs in Python and TypeScript. Operated by Wdotnet.
+description: An open standard for cryptographically signed, W3C Verifiable Credentials. 18 MCP servers for Brazilian data. SDKs in Python and TypeScript. Operated by Wdotnet.
 template: splash
 hero:
   title: SignedData
@@ -38,7 +38,7 @@ embedded `context.summary` so data and meaning travel together.
 **[SDKs](/docs/getting-started/)** in Python and TypeScript that produce, sign, and
 verify CDS events with ECDSA P-256 (v0.6.0+) or RSA-4096 PSS (legacy).
 
-**[16 MCP servers](#mcp-servers)** exposing signed Brazilian data — finance, legal, health,
+**[18 MCP servers](#mcp-servers)** exposing signed Brazilian data — finance, legal, health,
 employment, geography, weather, sports, and more.
 
 </div>
@@ -60,7 +60,7 @@ v0.6.0 adds W3C VC 2.0 profile (`DataIntegrityProof`, `sign_vc20`, `verify_vc20`
 
 <div class="card-section" id="mcp-servers">
 
-All servers live at `*.mcp.signed-data.org` and are operated by [Wdotnet](https://wdotnet.com.br). Each tool response is a W3C Verifiable Credential signed with ECDSA P-256.
+All servers live at `*.mcp.signed-data.org` and are operated by [Wdotnet](https://wdotnet.com.br). Each tool response is a W3C Verifiable Credential signed with ECDSA P-256. **18 servers** in production.
 
 | Server | Data | Endpoint |
 | ------ | ---- | -------- |
@@ -80,6 +80,8 @@ All servers live at `*.mcp.signed-data.org` and are operated by [Wdotnet](https:
 | Energia | ANEEL electricity tariffs by distributor | `energia.mcp.signed-data.org` |
 | Weather | Current conditions and forecasts (Open-Meteo) | `weather.mcp.signed-data.org` |
 | Sports | Football matches, standings, live scores | `sports.mcp.signed-data.org` |
+| CAGED | Formal employment balance by state and municipality (MTE/BrasilAPI) | `caged.mcp.signed-data.org` |
+| Focus | BCB Focus Report — Selic, IPCA, PIB, FX consensus forecasts | `focus.mcp.signed-data.org` |
 
 </div>
 
@@ -127,6 +129,7 @@ Want production-ready MCP servers with no infrastructure?
 | `religion.bible`     | Verses, passages, daily reading                    |
 | `energy.brazil`      | ANEEL electricity tariffs by distributor           |
 | `lottery.brazil`     | Caixa draws (Mega Sena, Lotofácil, …)              |
+| `employment.brazil`  | CAGED formal employment balance (MTE/BrasilAPI)    |
 
 </div>
 
